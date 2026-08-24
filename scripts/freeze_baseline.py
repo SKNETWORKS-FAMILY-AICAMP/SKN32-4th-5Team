@@ -19,7 +19,7 @@
 
 ## 무엇을 하나
 
-    ① 사전 점검 — 커밋 안 된 변경 · 태그 중복 · 골든셋 · 인덱스 · 키 · 프로파일
+    ① 사전 점검 — **어느 코드를 잴 것인가** · 커밋 안 된 변경 · 태그 중복 · 골든셋 · 인덱스 · 키
     ② N판 실행 — `--arm A` · **게이트 인자를 주지 않는다** (기준선은 판정이 아니라 기록이다)
     ③ 판을 케이스 단위로 겹쳐 **흔들린 건**을 뽑고 소음대를 낸다
     ④ 1판을 `eval/reports/baseline_before.json` 으로 굳히고 `.md` 에 요약을 쓴다
@@ -82,10 +82,79 @@ def git(*args: str) -> str:
 # ─────────────────────────────────────────────────────────────
 # ① 사전 점검 — 여기서 막는 것이 6분짜리 판을 버리는 것보다 싸다
 # ─────────────────────────────────────────────────────────────
+def _venv_state() -> tuple[bool | None, Path]:
+    """런처의 `checks.in_venv()` 를 **그대로 부른다** — venv 경로 규칙을 두 벌 두지 않는다 (D-22)."""
+    launcher = ROOT / "PetTriage_Launcher"
+    if not launcher.exists():
+        return None, ROOT / ".venv"
+    sys.path.insert(0, str(launcher))
+    try:
+        import checks
+
+        return checks.in_venv(), checks.venv_python()
+    except Exception:
+        return None, ROOT / ".venv"
+    finally:
+        sys.path.remove(str(launcher))
+
+
+def check_which_code(fatal: list[str], warn: list[str]) -> None:
+    """🔴 **어느 폴더의 `pettriage` 를 잴 것인가.**
+
+    2026-08-24 — 4차 폴더에 `.venv` 가 없는 채로 평가가 돌 뻔했다. 그 셸이 3차 폴더의
+    venv 를 물고 있으면 `-e`(편집 가능) 설치라 **3차 코드를 읽는데 리포트의
+    `repo_commit` 은 4차를 가리킨다.** 조용히 틀리고, 8단계에서 그 숫자를 못 쓴다.
+
+    `dirty` 를 막으면서 *어느 코드냐* 를 안 보는 것은 점검의 구멍이었다.
+    """
+    spec = None
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("pettriage")
+    except Exception:
+        spec = None
+
+    if spec is None or not spec.origin:
+        fatal.append("`pettriage` 를 임포트할 수 없다 — 런처 `실행.bat` → [1] 처음 설치")
+        return
+
+    origin = Path(spec.origin).resolve()
+    try:
+        rel = origin.relative_to(ROOT)
+    except ValueError:
+        fatal.append(
+            f"🔴 다른 폴더의 코드를 잰다 — pettriage = {origin}\n"
+            f"       이 저장소는 {ROOT} 다. 리포트의 커밋만 이곳을 가리키고 코드는 저곳이다.\n"
+            "       런처 `실행.bat` → [1] 처음 설치 로 이 폴더에 `.venv` 를 만든다"
+        )
+        return
+    print(f"  · pettriage = {rel}")
+
+    # 이 폴더 안이긴 한데 `site-packages` 사본이면, `src/` 를 고쳐도 측정에 안 들어간다.
+    # 런처는 `-e` 로 깔지만 손으로 깐 환경은 그렇지 않을 수 있다.
+    if "site-packages" in origin.parts:
+        warn.append(
+            "편집 가능(`-e`) 설치가 아니라 site-packages 사본이다 — "
+            "`src/` 를 고쳐도 이 판에는 안 들어간다"
+        )
+
+    inside, vpy = _venv_state()
+    if inside is False:
+        warn.append(
+            f"이 저장소의 `.venv` 밖에서 돈다 (sys.prefix={sys.prefix}) — "
+            "코드 경로는 맞으니 막지는 않는다"
+        )
+    elif inside is None and not vpy.exists():
+        warn.append("이 저장소에 `.venv` 가 없다 — 전역 환경으로 도는 중이다")
+
+
 def preflight(allow_dirty: bool, force: bool) -> list[str]:
     """막을 것(치명)과 알릴 것(경고)을 나눠 돌려준다. 치명이 하나라도 있으면 돌지 않는다."""
     fatal: list[str] = []
     warn: list[str] = []
+
+    check_which_code(fatal, warn)
 
     dirty = git("status", "--porcelain")
     if dirty:
