@@ -1,6 +1,6 @@
 """Qwen3-4B QLoRA 학습 — HF PEFT + TRL.
 
-설계 근거: docs/03 §4 · docs/06 D-42
+설계 근거: docs/archive-3rd/03 §4 · docs/06 D-42
 
     실행:  PETTRIAGE_PROFILE=train python -m pettriage.models.training.qlora
 

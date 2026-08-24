@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """① 분류 태스크 — distillation 본작업 (LLM 질의 생성 + LLM 라벨링).
 
-설계 근거: docs/03_모델-멀티태스크학습.md §4 · docs/03a_파인튜닝-구현기획.md §3
+설계 근거: docs/archive-3rd/03_모델-멀티태스크학습.md §4 · docs/archive-3rd/03a_파인튜닝-구현기획.md §3
 
     `generate_classify_samples.py`(고정 템플릿)는 조합 공간이 작아 32건
     파일럿까진 됐지만 목표(2,000~5,000건)엔 못 미친다 (증상/영양/일반은

@@ -1,6 +1,6 @@
 """멀티태스크 sLLM — Qwen3-4B QLoRA (WS3).
 
-설계 근거: docs/03_모델-멀티태스크학습.md · docs/06 D-05 · D-42
+설계 근거: docs/archive-3rd/03_모델-멀티태스크학습.md · docs/06 D-05 · D-42
 
 ```
 tasks.py       태스크 5종 정의 — 그래프 노드·지표와 1:1 대응

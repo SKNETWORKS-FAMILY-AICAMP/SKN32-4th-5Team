@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """① 분류 태스크 — distillation 파일럿.
 
-설계 근거: docs/03_모델-멀티태스크학습.md §4 · docs/03a_파인튜닝-구현기획.md §3
+설계 근거: docs/archive-3rd/03_모델-멀티태스크학습.md §4 · docs/archive-3rd/03a_파인튜닝-구현기획.md §3
 
     보호자 질의 생성(템플릿 증강, 비용 없음) → 대형 LLM 라벨링(distillation,
     실제 프로덕션 CLASSIFY 프롬프트 재사용) → 사람 검수용 파일 출력.

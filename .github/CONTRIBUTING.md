@@ -41,8 +41,8 @@ GPU가 없어도 여기까지는 전부 돈다. 학습 의존성은 `.[train]` �
 | 커밋 | `feat(...)` · `fix(...)` · `docs: ...` · `chore: ...` |
 
 ```bash
-git clone https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-3rd-5Team.git
-cd SKN32-3rd-5Team
+git clone https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-4th-5Team.git
+cd SKN32-4th-5Team
 git checkout <자기-브랜치>
 ```
 

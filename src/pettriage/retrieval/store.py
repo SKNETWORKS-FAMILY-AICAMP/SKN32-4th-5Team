@@ -306,7 +306,7 @@ def filter_by_threshold(hits: list[Hit], threshold: float) -> list[Hit]:
 def dedupe_by_substance(hits: list[Hit]) -> list[Hit]:
     """같은 (물질 × 종) 히트를 **하나로 접는다.** 점수가 가장 높은 것을 남긴다.
 
-    설계 근거: docs/06 D-14 · D-22 · D-39 · docs/04 §2.5.6
+    설계 근거: docs/06 D-14 · D-22 · D-39 · docs/archive-3rd/04 §2.5.6
 
     **왜 필요한가** — 같은 물질이 여러 자료에 흩어져 있다.
 

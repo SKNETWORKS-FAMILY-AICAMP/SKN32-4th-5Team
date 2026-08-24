@@ -4,7 +4,7 @@
     python scripts/check_goldenset.py eval/goldenset/golden_lse.csv
     python scripts/check_goldenset.py                # golden_*.csv 전부
 
-설계 근거: docs/04a_골든셋작성지침.md · docs/04 §2.3 · docs/06 D-13 · D-39
+설계 근거: docs/04a_골든셋작성지침.md · docs/archive-3rd/04 §2.3 · docs/06 D-13 · D-39
 
 **골든셋이 틀리면 평가 전체가 틀린다.** 정답이 잘못된 채로 지표를 내면
 그 지표는 아무 의미가 없으므로, 적재 전에 형식과 논리 모순을 거른다.

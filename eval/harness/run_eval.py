@@ -1,6 +1,6 @@
 """골든셋 → 엔진 → 채점 → 리포트.
 
-설계 근거: docs/04_테스트-평가계획.md §1.2 · §4 · §8 · docs/02 §12 (QAEngine)
+설계 근거: docs/archive-3rd/04_테스트-평가계획.md §1.2 · §4 · §8 · docs/02 §12 (QAEngine)
 
 사용법
     python eval/harness/run_eval.py                    # 설정의 엔진 (기본 stub)

@@ -3,7 +3,7 @@
 
     python scripts/calibrate_threshold.py
 
-설계 근거: docs/02 §8.3·§9 · docs/06 D-44 · docs/04 §4
+설계 근거: docs/02 §8.3·§9 · docs/06 D-44 · docs/archive-3rd/04 §4
 
 **임계값 미만이면 파이프라인이 그 질의를 거절로 보낸다** (02 §8.3).
 너무 낮으면 무관한 근거로 답을 만들고, 너무 높으면 있는 근거를 두고 거절한다.

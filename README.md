@@ -10,7 +10,7 @@
 
 <br>
 
-[![CI](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-3rd-5Team/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-3rd-5Team/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![CI](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-4th-5Team/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-4th-5Team/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 ![Python](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-18_nodes-3A4F37)
 ![Chroma](https://img.shields.io/badge/ChromaDB-888_chunks-B3542F)
@@ -19,16 +19,23 @@
 
 <br>
 
-**SKN 3차 단위 프로젝트 · 팀 save the pet**
+**SKN 4차 단위 프로젝트 · 팀 save the pet**
 
 오한빈(팀장) · 이근준 · 권소라 · 이서은
+
+<br>
+
+이 저장소의 **RAG · 판정 엔진 · 평가 하네스는 3차 단위 프로젝트
+[SKN32-3rd-5Team](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-3rd-5Team) 에서 이어받았습니다.**
+4차에서는 **Django 기반 웹 애플리케이션 전환**과 **AWS 배포**를 다룹니다.
+3차 산출물 문서는 [`docs/archive-3rd/`](docs/archive-3rd/) 에 보관돼 있습니다.
 
 <br>
 
 [📄 결과 보고서](eval/reports/결과보고서_제출용/2026-08-04_결과보고서.md) ·
 [📊 한 장 요약](eval/reports/결과보고서_제출용/결과보고서_한장요약.html) ·
 [🖼 발표용 PDF](eval/reports/결과보고서_제출용/결과보고서_발표용.pdf) ·
-[🗺 설계 한 장](docs/시스템설계_한장.pdf)
+[🗺 설계 한 장](docs/archive-3rd/시스템설계_한장.pdf)
 
 </div>
 
@@ -449,10 +456,10 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 
 | 산출물 | 어디 |
 |---|---|
-| ① **수집 데이터 · 전처리 문서** | [`docs/01`~`01e`](docs/) · `data/facts/` 888행 · `data/manifests/` 대장 4종 · [`ingest/`](src/pettriage/ingest/) |
-| ② **시스템 아키텍처** | [`docs/02`](docs/02_시스템-아키텍처.md) · [한 장 요약 PDF](docs/시스템설계_한장.pdf) · LangGraph 실물 [`graph/build.py`](src/pettriage/graph/build.py) |
+| ① **수집 데이터 · 전처리 문서** | [`docs/archive-3rd/01`~`01e`](docs/) · `data/facts/` 888행 · `data/manifests/` 대장 4종 · [`ingest/`](src/pettriage/ingest/) |
+| ② **시스템 아키텍처** | [`docs/02`](docs/02_시스템-아키텍처.md) · [한 장 요약 PDF](docs/archive-3rd/시스템설계_한장.pdf) · LangGraph 실물 [`graph/build.py`](src/pettriage/graph/build.py) |
 | ③ **RAG + 벡터DB + LangChain 연동 코드** | `--arm A` ≡ `--arm A-LC` **실패 21건 완전 일치**로 동작 증명 |
-| ④ **테스트 계획 · 결과 보고서** | [`docs/04`](docs/04_테스트-평가계획.md) + [`결과보고서_제출용/`](eval/reports/결과보고서_제출용/) 3종 |
+| ④ **테스트 계획 · 결과 보고서** | [`docs/archive-3rd/04`](docs/archive-3rd/04_테스트-평가계획.md) + [`결과보고서_제출용/`](eval/reports/결과보고서_제출용/) 3종 |
 
 **설계 결정 기록**(D-01~D-98)을 맥락·대안·트레이드오프와 함께 남겼다 →
 [`docs/06`](docs/06_설계결정기록.md)
@@ -479,7 +486,7 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 설계 결정 기록은 **결정한 그 시점에** 맥락·대안·트레이드오프를 적은 문서다. 회의록도 사후
 정리본도 아니다. **팀원의 기여가 있는 항목은 그 자리에 표시했다** — 표시가 없으면 팀장 단독 판단이다.
 
-작업 분담의 상세와 시점별 변경은 [`docs/07`](docs/07_작업배분.md) 에 있다.
+작업 분담의 상세와 시점별 변경은 [`docs/archive-3rd/07`](docs/archive-3rd/07_작업배분.md) 에 있다.
 
 ---
 
@@ -615,16 +622,16 @@ status = answered   근거를 찾아 판정했다   → 배지 + 근거 + 감사
 | 3 | [**결과 보고서**](eval/reports/결과보고서_제출용/2026-08-04_결과보고서.md) | 측정 · 발견 · 한계 — *무엇이 실제로 일어났는가* |
 | 4 | [`06_결정기록`](docs/06_설계결정기록.md) | D-01~D-98 의 맥락·대안·트레이드오프 |
 
-**깊이 보려면** — [`04b_발견`](docs/04b_발견_근거검증과출처분해.md) ④ 근거 검증의 실체와 출처 분해 ·
-[`00_기획`](docs/00_기획-요구사항분석.md) 과제 해석과 전체 지도
+**깊이 보려면** — [`04b_발견`](docs/archive-3rd/04b_발견_근거검증과출처분해.md) ④ 근거 검증의 실체와 출처 분해 ·
+[`00_기획`](docs/archive-3rd/00_기획-요구사항분석.md) 과제 해석과 전체 지도
 
-데이터: [`01`](docs/01_데이터-수집및전처리.md) 방침 · [`01a`](docs/01a_자료분석보고.md) 분석 ·
-[`01b`](docs/01b_자료검증보고.md) 검증 · [`01c`](docs/01c_데이터-작업지시.md) 작업지시 ·
+데이터: [`01`](docs/archive-3rd/01_데이터-수집및전처리.md) 방침 · [`01a`](docs/archive-3rd/01a_자료분석보고.md) 분석 ·
+[`01b`](docs/archive-3rd/01b_자료검증보고.md) 검증 · [`01c`](docs/archive-3rd/01c_데이터-작업지시.md) 작업지시 ·
 [`01d`](docs/01d_자료보관규칙.md) 보관 · [`01e`](docs/01e_사실표작성지침.md) 사실 표 지침
 
-모델: [`03`](docs/03_모델-멀티태스크학습.md) · [`03a`](docs/03a_파인튜닝-구현기획.md) ·
-평가: [`04`](docs/04_테스트-평가계획.md) · [`04a`](docs/04a_골든셋작성지침.md) ·
-배분: [`07`](docs/07_작업배분.md) · 새 기계: [`09`](docs/09_새환경-준비.md)
+모델: [`03`](docs/archive-3rd/03_모델-멀티태스크학습.md) · [`03a`](docs/archive-3rd/03a_파인튜닝-구현기획.md) ·
+평가: [`04`](docs/archive-3rd/04_테스트-평가계획.md) · [`04a`](docs/04a_골든셋작성지침.md) ·
+배분: [`07`](docs/archive-3rd/07_작업배분.md) · 새 기계: [`09`](docs/09_새환경-준비.md)
 
 > *"단점은 없나요?"* → §아직 못 한 것 · `docs/06` 의 트레이드오프 문장
 > *"자료를 왜 버렸나요?"* → [`DELETION_LOG.csv`](data/manifests/DELETION_LOG.csv)
