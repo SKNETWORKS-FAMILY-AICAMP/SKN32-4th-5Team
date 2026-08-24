@@ -47,6 +47,9 @@ facts:           ## 사실 표 검사 (WS1) — 01e 지침
 golden:          ## 골든셋 검사 (WS4) — 04a 지침
 	python scripts/check_goldenset.py
 
+reqs:            ## 요구사항 정의서 정합성 (1단계) — 추적표 참조가 이어지는가
+	python scripts/check_requirements.py
+
 rules:           ## 사실 표 → 규칙 테이블 재생성 (생성물이다. 손으로 고치지 않는다)
 	python scripts/build_rule_table.py --write
 
