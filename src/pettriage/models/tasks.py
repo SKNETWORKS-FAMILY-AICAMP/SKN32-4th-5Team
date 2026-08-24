@@ -1,0 +1,185 @@
+"""멀티태스크 5종 정의.
+
+설계 근거: docs/03_모델-멀티태스크학습.md §2 · docs/06 D-05
+
+    공지 예시(분류·요약·번역)를 그대로 쓰지 않고 **파이프라인이 실제로
+    필요로 하는 태스크로 재구성**했다. 각 태스크는 02 §6 그래프의
+    특정 노드에 대응하며, 그 노드가 없으면 태스크도 없다.
+
+    ④ 근거 검증이 이 구성의 핵심이다 — 과제 목표 1번(환각 방지)을
+    파인튜닝 모델이 직접 담당하게 만드는 지점이다.
+
+**출력 길이가 태스크마다 다른 것은 의도다.** 라벨 한 단어(①)부터
+문단(③)까지 섞어 **태스크 간섭이라는 실제 논점**을 확보한다 (04 E4).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class Task(StrEnum):
+    """태스크 ID. 학습 샘플·평가 지표·프롬프트가 모두 이 값으로 묶인다."""
+
+    CLASSIFY = "classify"  # ① 의도·위험 분류
+    SLOT = "slot"  # ② 슬롯 추출
+    COMPRESS = "compress"  # ③ 요약 — **기간 리포트** (D-83). 질의 경로에 없다
+    VERIFY = "verify"  # ④ 근거 검증  ← 핵심
+    SIMPLIFY = "simplify"  # ⑤ 평이화
+    # ⑥ 번역 — **미채택 확정** (2026-08-02 · D-19 후속).
+    #   경로 ②(D-37·D-38·D-45)로 벡터DB 청크가 전부 한국어가 되어 번역 대상이 사라졌다.
+    #   비교군을 만들 수 없어 04 E2 도 폐기했다. **멀티태스크는 5종이다** (D-05).
+    #   값을 지우지 않고 남기는 이유 — 과거 학습 샘플·설정에 문자열이 남아 있을 수 있고,
+    #   여기서 없애면 로딩이 KeyError 로 죽는다. `DEFAULT_TASKS` 에 없으므로 학습에는 안 들어간다.
+    TRANSLATE = "translate"
+
+
+@dataclass(frozen=True)
+class TaskSpec:
+    task: Task
+    graph_node: str  # 02 §6 그래프의 대응 노드
+    output_kind: str  # 출력 형태 — 간섭 분석의 축
+    verified_by: str  # 05 §4 — LLM 출력에 붙는 검증 코드
+    metric: str  # 04 §3 태스크별 지표
+
+    #: **이 태스크가 낼 수 있는 라벨.** 비어 있으면 자유 출력이다.
+    #:
+    #: ⚠️ 여기가 단일 출처다 (D-22 · D-73). 2026-08-02 실측에서 —
+    #:
+    #:     ① 프롬프트는 *"허용된 라벨 중 하나만 출력한다"* 라고만 적었다.
+    #:        **그 라벨이 무엇인지는 안 적혀 있었다.**
+    #:     ② 코드는 `ALLOWED_INTENTS` 로 정확히 대조했다.
+    #:
+    #:   모델은 보기를 모르니 `'위험성우려'`·`'high_risk'` 같은 그럴듯한 말을 냈고,
+    #:   코드가 전부 `unknown` 으로 걸러 **거절**로 보냈다. 결과가 뒤집혔다 —
+    #:   **키워드 폴백(통과 10%)보다 진짜 LLM(3.3%)이 더 나빴다.**
+    #:   *(이서은 팀원 발견)*
+    #:
+    #:   프롬프트와 검증기가 **같은 목록을 봐야 한다.** 프롬프트에 손으로 다시 적으면
+    #:   라벨이 하나 늘어날 때 같은 사고가 반복된다.
+    labels: tuple[str, ...] = ()
+
+    #: 라벨의 뜻. 프롬프트에 함께 실어 **모델이 경계를 알게** 한다.
+    #: `general` 이 *"우리가 다루지 않는 질문"* 이라는 것은 설명 없이는 알 수 없다 (D-46).
+    label_hints: dict[str, str] | None = None
+
+    #: **구조화 출력 태스크가 쓸 수 있는 키.** 비어 있으면 자유 출력이다.
+    #:
+    #: 🔴 여기가 단일 출처다 — `labels` 와 같은 지위다 (D-73 · D-86).
+    #:
+    #:   2026-08-03 실측: ② 슬롯 프롬프트에 **JSON 스키마가 한 글자도 없었다.**
+    #:   *"슬롯을 추출해 JSON 객체 하나로 출력한다"* 라고만 적혀 있었고, 어떤 키를
+    #:   써야 하는지는 안 적혀 있었다. 모델은 키 이름을 모르니 그럴듯한 것을 지어냈다 —
+    #:
+    #:       {'species': '개', 'concern': '목캔디'}          ← 키가 concern
+    #:       {'species': '개', 'action': '…', 'item': '실리카겔'}  ← 키가 item
+    #:
+    #:   코드는 `llm.get("substance")` 만 보므로 **뽑아 놓고 버렸다.** 6건 중
+    #:   `substance` 키를 쓴 것은 1건뿐이었다. D-73 이 ①분류에서 겪은 것과
+    #:   **정확히 같은 사고**이고, 그때 만든 처방(`labels`)을 ②에는 안 했던 것이다.
+    #:
+    #:   03 §5 는 이미 요구했다 — *"②는 출력이 JSON 이므로 **스키마를 프롬프트에
+    #:   고정**하고 파싱 실패율을 관리한다."* 구현이 안 된 채 남아 있었다.
+    #:
+    #: ⚠️ 여기 키를 늘리면 `graph/state.py::Slots` 에도 있어야 한다.
+    #:    `tests/test_slot_schema.py` 가 그 포함관계를 강제한다.
+    output_keys: tuple[str, ...] = ()
+
+    #: 키별 값 규칙. 프롬프트에 함께 실린다. **값의 형식까지 적는다** —
+    #: `species` 를 `개` 로 낼지 `dog` 로 낼지는 설명 없이는 알 수 없다.
+    key_hints: dict[str, str] | None = None
+
+
+SPECS: dict[Task, TaskSpec] = {
+    Task.CLASSIFY: TaskSpec(
+        task=Task.CLASSIFY,
+        graph_node="classify_intent",
+        output_kind="단일 라벨",
+        verified_by="허용목록 검증 · 미분류 시 폴백",
+        metric="macro F1",
+        labels=("intoxication", "symptom", "nutrition", "general"),
+        label_hints={
+            "intoxication": "물질을 먹었거나 핥았거나 접촉했다",
+            "symptom": "증상만 말하고 물질은 말하지 않았다",
+            "nutrition": "급여·영양·사료에 대한 질문이다",
+            "general": "우리가 다루지 않는 질문 — 이름 짓기·훈련·보험·브랜드 추천",
+        },
+    ),
+    Task.SLOT: TaskSpec(
+        task=Task.SLOT,
+        graph_node="extract_slots",
+        output_kind="JSON 객체",
+        verified_by=(
+            "JSON 스키마 검증 · **폐쇄 목록 정규화**(D-59 ① · `vocabulary.resolve_substance`) "
+            "· 결측 판정 · 되묻기 상한 2회"
+        ),
+        metric="슬롯 단위 정확도 · 결측 탐지율",
+        # **모델이 쓸 수 있는 키.** 코드가 읽는 키와 같아야 한다 (D-86).
+        output_keys=("species", "substance", "weight_kg", "amount_g", "elapsed_hours"),
+        key_hints={
+            "species": "dog · cat · bird 중 하나를 **영문 그대로**. 명시 안 됐으면 null",
+            "substance": "먹은 것을 **발화에 나온 말 그대로**. 바꾸거나 번역하지 않는다",
+            "weight_kg": "체중. 숫자만 (단위 없이)",
+            # 🔴 **개수를 무게로 넣지 못하게 막는다.** 2026-08-03 실측 —
+            #    *"목캔디 하나"* 에서 `amount_g: 1` 이 나왔다. 1개이지 1그램이 아니다.
+            #    이 값은 `mg/kg` 계산에 그대로 들어가므로(D-78) 틀린 수치 하나가
+            #    등급을 통째로 바꾼다. **모르는 것은 null 이 맞다** (D-79 — 모름을
+            #    안전으로도 위험으로도 읽지 않고, 모른다고 말한다).
+            "amount_g": (
+                "섭취량. **무게를 그램으로 말한 경우에만** 숫자로 넣는다. "
+                "`하나`·`한 알`·`한 줌`·`조금` 같은 개수·어림은 넣지 않는다 — null"
+            ),
+            "elapsed_hours": "먹은 뒤 지난 시간. 숫자만",
+        },
+    ),
+    # ③ 은 **질의 그래프에 없다** (2026-08-03 · D-83).
+    #
+    #   D-02 가 요약의 필연성을 둔 자리는 처음부터 **기간 리포트**였다 —
+    #   *"원안(중독 응급 QA)은 요약 태스크의 필연성도 약했다"*. 질의 경로의
+    #   `compress_context` 는 그 태스크를 파이프라인에도 한 번 더 붙인 것이었고,
+    #   03 §1.1(*"파이프라인이 실제로 필요로 하는 태스크만 고른다"*)과 어긋났다.
+    #
+    #   빼기로 한 직접 이유는 ①검증의 정답지가 LLM 생성물이 되는 순환,
+    #   ②실측 근거 393~533자 대 창 128k(임계 800자를 안 넘었다),
+    #   ③근거가 모자라 실패하는 시스템에서 근거를 깎는다는 것이다.
+    Task.COMPRESS: TaskSpec(
+        task=Task.COMPRESS,
+        graph_node="(질의 그래프 밖 — app/routes/records.py::report)",
+        output_kind="문단",
+        verified_by="기간·건수 대조 · 원문에 없는 증상·수치 불가",
+        metric="기록 보존율 · 원문 밖 내용 생성률",
+    ),
+    Task.VERIFY: TaskSpec(
+        task=Task.VERIFY,
+        graph_node="verify_grounding",
+        output_kind="문장별 3값 라벨",
+        verified_by="판정에 따른 게이트 · 재검색 트리거 · 문장 제거",
+        metric="근거없음 탐지 재현율 (**놓치면 환각이 나간다**)",
+        labels=("근거있음", "근거없음", "모순"),
+    ),
+    Task.SIMPLIFY: TaskSpec(
+        task=Task.SIMPLIFY,
+        graph_node="simplify_terms",
+        output_kind="문장",
+        verified_by="용어집 준수 검증",
+        metric="용어집 적용률 · 의미 보존",
+    ),
+    Task.TRANSLATE: TaskSpec(
+        task=Task.TRANSLATE,
+        graph_node="(없음 — 미채택)",
+        output_kind="문장",
+        verified_by="학명·수치 앵커 대조",  # 미채택이라 실제로 도는 검증은 아니다
+        metric="수치·학명 보존율",
+    ),
+}
+
+#: 기본 학습 대상 **5종이 최종이다** (D-05 · D-19 후속).
+#: ⑥ 번역은 편입되지 않는다 — 번역할 원문이 인덱스에 없다 (2026-08-02).
+DEFAULT_TASKS: tuple[Task, ...] = (
+    Task.CLASSIFY,
+    Task.SLOT,
+    Task.COMPRESS,
+    Task.VERIFY,
+    Task.SIMPLIFY,
+)

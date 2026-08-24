@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+#
+# 🔴 **첫 줄을 지우지 않는다.** pip 은 BOM 도 코딩 선언도 없으면 requirements 파일을
+#    **시스템 로캘**로 디코딩한다 (`pip/_internal/utils/encoding.py::auto_decode`).
+#    한국어 윈도우는 cp949 라, 아래 한글 주석에서 이렇게 터진다 —
+#
+#      UnicodeDecodeError: 'cp949' codec can't decode byte 0xed in position 16
+#
+#    리눅스 CI 는 UTF-8 이라 **절대 안 걸린다.** 팀원 PC 에서만 설치가 실패하고,
+#    설치가 안 되면 그 사람은 아무것도 못 한다 (2026-08-03 실측 · 새 기기).
+#    `auto_decode` 는 앞 두 줄에서 이 선언을 찾으므로 **여기 있어야 한다.**
+# 버전 고정 파일 (pip constraints) — 04 §8 재현성
+#
+#   무엇을 설치할지는 pyproject.toml 의 extras 가 정하고,
+#   어느 버전으로 고정할지는 이 파일이 정한다.
+#
+#   설치:  pip install -e '.[api,rag,ingest,dev]' -c constraints.txt
+#
+# 버전을 올릴 때는 이 파일과 pyproject 의 상한을 함께 고친다.
+# 고친 뒤에는 **반드시 rag 그룹까지 설치해 본다** — CI 의 rag-deps 잡이 같은 일을 한다.
+#   pip install -e '.[api,rag,ingest,dev]' -c constraints.txt
+# 실험 결과를 보고할 때는 이 파일의 커밋 해시를 함께 기록한다 (D-20 코퍼스 버전 태깅과 동일 원칙).
+
+# ── 핵심 ──────────────────────────────────────────────────
+pydantic==2.10.4
+pydantic-settings==2.7.1
+PyYAML==6.0.2
+
+# ── 배달 계층 (D-40) ──────────────────────────────────────
+fastapi==0.115.6
+uvicorn==0.34.0
+
+# ── 오케스트레이션 (D-07 · D-08) ──────────────────────────
+langgraph==0.2.62
+# langchain-community 0.3.24 부터 numpy<2 제약이 풀린다 (py3.11 에서 필수)
+langchain-core==0.3.63
+langchain-community==0.3.24
+# LLM 연동을 LangChain 으로 한다 (D-71). **0.3.8 이 위 핀들과 맞는 가장 높은 버전이다** —
+# 0.3.35 는 core>=0.3.78 · openai>=1.104.2 를 요구해 넷을 연쇄로 올려야 한다.
+langchain-openai==0.3.8
+# langchain-community 가 umbrella 를 끌고 온다. 안 박아두면 pip 이 최신을 집어
+# core 상한과 충돌한다.
+langchain==0.3.25
+langsmith==0.2.10
+
+# ── 임베딩 · 벡터DB (D-19 · 02 §11) ───────────────────────
+sentence-transformers==3.3.1
+# 0.5.23 은 tokenizers<=0.20.3 을 요구해 transformers 4.51 과 충돌한다
+chromadb==0.6.3
+psycopg==3.2.3
+pgvector==0.3.6
+
+# ── 계정 · 프로필 DB (WS5 백엔드) ─────────────────────────
+SQLAlchemy==2.0.36
+PyMySQL==1.1.1
+PyJWT==2.10.1
+# passlib 을 쓰지 않는다 — 1.7.4 가 bcrypt>=4.1 과 깨져 **모든 해싱이 ValueError** 였다.
+# bcrypt 를 직접 쓴다 (app/auth.py). 되돌리려면 CI db-deps 잡이 먼저 빨개진다.
+bcrypt==4.2.1
+email-validator==2.2.0
+
+# ── LLM 클라이언트 ────────────────────────────────────────
+openai==1.59.6
+anthropic==0.42.0
+
+# ── 문서 파싱 (01 §9) ─────────────────────────────────────
+pypdf==5.1.0
+pdfplumber==0.11.4
+beautifulsoup4==4.12.3
+lxml==5.3.0
+openpyxl==3.1.5
+pandas==2.2.3
+numpy==2.2.1
+
+# ── 개인정보 제거 (D-36) ──────────────────────────────────
+Pillow==11.1.0
+piexif==1.1.3
+
+# ── Qwen3-4B QLoRA (D-42) ─────────────────────────────────
+# GPU 환경 전용. CUDA 빌드는 환경에 맞는 인덱스에서 받는다.
+torch==2.5.1
+# ⚠️ Qwen3 아키텍처 지원은 transformers 4.51 부터다 (D-42). 4.51 미만으로 내리지 말 것
+transformers==4.51.3
+peft==0.14.0
+trl==0.13.0
+bitsandbytes==0.45.0
+accelerate==1.2.1
+datasets==3.2.0
+
+# ── 개발 ──────────────────────────────────────────────────
+pytest==8.3.4
+pytest-cov==6.0.0
+ruff==0.8.6
+mypy==1.14.1
+httpx==0.28.1
+pre-commit==4.0.1
+ipykernel==6.29.5

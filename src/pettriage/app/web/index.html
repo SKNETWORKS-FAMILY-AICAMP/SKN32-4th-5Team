@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STP — 로그인</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --ink: #2C2A26;
+    --ink-soft: #6B6558;
+    --ink-faint: #A39C8C;
+    --moss: #4F6B4A;
+    --moss-dark: #3A4F37;
+    --moss-soft: #E4EBE1;
+    --honey: #D89B3D;
+    --clay: #B3542F;
+    --amber: #C98A1E;
+    --line: #E5DFD2;
+    --danger-soft: #F6E4DB;
+    --radius: 20px;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh;
+    background: var(--surface);
+    color: var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+  }
+  .stage{
+    width:100%; min-height:100vh;
+    display:grid; grid-template-columns: 1fr 1fr;
+    background: var(--surface);
+  }
+
+  /* -------- 왼쪽 브랜드 패널 -------- */
+  .side{
+    background: var(--moss-dark);
+    color:#fff;
+    padding: 40px 36px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position:relative;
+    overflow-x:hidden; overflow-y:auto; height:100vh;
+  }
+  .side::before{
+    content:"";
+    position:absolute; right:-60px; bottom:-60px;
+    width:220px; height:220px; border-radius:50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .side::after{
+    content:"";
+    position:absolute; left:-40px; top:-40px;
+    width:140px; height:140px; border-radius:50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .side-top{ position:relative; z-index:1; }
+  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:50px; }
+  .logo-mark{ width:34px; height:34px; border-radius:10px; background: rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; }
+  .logo-mark svg{ width:18px; height:18px; }
+  .logo-text{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:17px; }
+
+  .side h2{
+    font-family:'Noto Serif KR', serif; font-size:25px; line-height:1.4; font-weight:700;
+    margin:0 0 14px;
+  }
+  .side p{ font-size:13.5px; line-height:1.7; color: rgba(255,255,255,0.75); max-width:280px; }
+
+  .side-quote{
+    position:relative; z-index:1;
+    background: rgba(255,255,255,0.08);
+    border-radius:16px; padding:16px;
+    font-size:12.5px; line-height:1.6; color: rgba(255,255,255,0.85);
+  }
+  .side-quote .tag{
+    display:inline-flex; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px;
+    background: var(--honey); color:#3a2a0e; margin-bottom:8px;
+  }
+
+  /* -------- 오른쪽 폼 패널 -------- */
+  .form-side{
+    padding: 60px 40px;
+    overflow-y:auto; height:100vh;
+  }
+  .form-inner{ width:100%; max-width:420px; margin:0 auto; }
+  .form-head{ margin-bottom: 26px; }
+  .form-head .eyebrow{
+    font-size:11.5px; font-weight:700; color: var(--moss-dark);
+    background: var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:12px;
+  }
+  .form-head h1{
+    font-family:'Noto Serif KR', serif; font-size:22px; font-weight:700; margin:0 0 6px;
+  }
+  .form-head p{ font-size:13px; color: var(--ink-soft); margin:0; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--ink-soft); margin-bottom:6px; }
+  .input-row{ display:flex; gap:8px; }
+  .field input{
+    width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    font-size:13.5px; font-family:inherit; background: var(--bg); color: var(--ink); outline:none;
+  }
+  .field input:focus{ border-color: var(--moss); background:#fff; }
+  .field .hint{ font-size:11.5px; color: var(--ink-faint); margin-top:5px; }
+  .field .hint.ok{ color: var(--moss-dark); }
+  .field .hint.err{ color: var(--clay); }
+
+  .btn-check{
+    flex-shrink:0; padding:0 14px; border-radius:12px; border:1px solid var(--line);
+    background: var(--surface); color: var(--ink-soft); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;
+    white-space:nowrap;
+  }
+  .btn-check:hover{ border-color: var(--moss); color: var(--moss-dark); }
+
+  .btn-primary{
+    width:100%; background: var(--moss); color:#fff; border:none; border-radius:999px;
+    padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    margin-top: 6px;
+  }
+  .btn-primary:hover{ background: var(--moss-dark); }
+  .btn-primary:disabled{ background:#c9c3b4; cursor:not-allowed; }
+
+  .form-foot{
+    margin-top:18px; text-align:center; font-size:12.5px; color: var(--ink-soft);
+  }
+  .form-foot button{
+    background:none; border:none; color: var(--moss-dark); font-weight:700; cursor:pointer;
+    font-family:inherit; font-size:12.5px; padding:0; text-decoration:underline; text-underline-offset:2px;
+  }
+
+  .error-box{
+    display:none;
+    background: var(--danger-soft); color:#7a3216; border:1px solid #e5c2ac;
+    font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px;
+  }
+  .error-box.show{ display:block; }
+
+  #signupPanel{ display:none; }
+  #signupPanel.show{ display:block; }
+  #loginPanel.hide{ display:none; }
+
+  /* -------- 프로필 선택 팝업 -------- */
+  .profile-picker-overlay{
+    display:none; position:fixed; inset:0; background: rgba(44,42,38,0.45);
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .profile-picker-overlay.open{ display:flex; }
+  .profile-picker{
+    background:#fff; border-radius:22px; padding:28px 26px;
+    width:100%; max-width:640px; box-shadow: 0 30px 60px -20px rgba(0,0,0,0.3);
+  }
+  .profile-picker h3{ font-family:'Noto Serif KR', serif; font-size:18px; margin:0 0 4px; }
+  .profile-picker .sub{ font-size:12.5px; color: var(--ink-soft); margin:0 0 20px; }
+  .picker-row{ display:flex; gap:14px; overflow-x:auto; padding-bottom:4px; }
+  .picker-card{
+    flex:1; min-width:140px; border:1.5px solid var(--line); border-radius:16px;
+    padding:18px 12px; text-align:center; cursor:pointer; background: var(--bg);
+    transition: .15s;
+  }
+  .picker-card:hover{ border-color: var(--moss); background: var(--moss-soft); }
+  .picker-card .pav{
+    width:60px; height:60px; border-radius:50%; background: var(--honey);
+    display:flex; align-items:center; justify-content:center; font-size:28px;
+    margin:0 auto 12px;
+  }
+  .picker-card .pname{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:14px; margin-bottom:4px; }
+  .picker-card .pmeta{ font-size:11px; color: var(--ink-soft); }
+  .picker-card.add-new{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-style:dashed; color: var(--ink-faint);
+  }
+  .picker-card.add-new .plus{ font-size:22px; margin-bottom:6px; }
+
+  @media (max-width: 720px){
+    .stage{ grid-template-columns:1fr; }
+    .side{ display:none; }
+    .form-side{ padding: 34px 26px; }
+    .picker-row{ flex-wrap:wrap; }
+    .picker-card{ min-width: calc(50% - 7px); flex: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- 왼쪽 브랜드 영역 -->
+  <div class="side">
+    <div class="side-top">
+      <div class="logo">
+        <span class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
+        </span>
+        <span class="logo-text">Save The Pet</span>
+      </div>
+      <h2>"이거 먹어도 돼?"를<br>더는 헷갈리지 않게</h2>
+      <p>우리 아이의 첫 안전 매뉴얼. 로그인하고 함께 나눠 먹은 순간을 기록해보세요.</p>
+    </div>
+    <div class="side-quote">
+      <span class="tag">위험</span><br>
+      “포도는 절대 나눠주지 마세요. 소량으로도 급성 신부전을 일으킬 수 있어요.”
+    </div>
+  </div>
+
+  <!-- 오른쪽 폼 영역 -->
+  <div class="form-side">
+    <div class="form-inner">
+
+    <!-- 로그인 패널 -->
+    <div id="loginPanel">
+      <div class="form-head">
+        <span class="eyebrow">WELCOME BACK</span>
+        <h1>로그인</h1>
+        <p>아이디와 비밀번호를 입력해주세요.</p>
+      </div>
+
+      <div class="error-box" id="loginError">이메일 또는 비밀번호가 올바르지 않아요.</div>
+
+      <div class="field">
+        <label for="loginId">이메일</label>
+        <input type="email" id="loginId" placeholder="이메일 입력">
+      </div>
+      <div class="field">
+        <label for="loginPw">비밀번호</label>
+        <input type="password" id="loginPw" placeholder="비밀번호 입력">
+      </div>
+
+      <button class="btn-primary" id="loginBtn">로그인</button>
+
+      <div class="form-foot">
+        아직 계정이 없으신가요? <button id="goSignup">회원가입</button>
+      </div>
+    </div>
+
+    <!-- 회원가입 패널 -->
+    <div id="signupPanel">
+      <div class="form-head">
+        <span class="eyebrow">GET STARTED</span>
+        <h1>회원가입</h1>
+        <p>아이디와 비밀번호를 만들어주세요.</p>
+      </div>
+
+      <div class="field">
+        <label for="suNickname">닉네임</label>
+        <input type="text" id="suNickname" placeholder="화면에 표시될 이름">
+      </div>
+
+      <div class="field">
+        <label for="suId">이메일</label>
+        <input type="email" id="suId" placeholder="이메일 입력">
+        <div class="hint" id="idHint"></div>
+      </div>
+
+      <div class="field">
+        <label for="suPw">비밀번호</label>
+        <input type="password" id="suPw" placeholder="8자 이상">
+      </div>
+      <div class="field">
+        <label for="suPw2">비밀번호 확인</label>
+        <input type="password" id="suPw2" placeholder="비밀번호 다시 입력">
+        <div class="hint" id="pwHint"></div>
+      </div>
+
+      <button class="btn-primary" id="signupBtn" disabled>회원가입</button>
+
+      <div class="form-foot">
+        이미 계정이 있으신가요? <button id="goLogin">로그인</button>
+      </div>
+    </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 프로필 선택 팝업 (등록된 반려동물이 2마리 이상일 때) -->
+<div class="profile-picker-overlay" id="profilePickerOverlay">
+  <div class="profile-picker">
+    <h3>어떤 아이로 시작할까요?</h3>
+    <p class="sub">등록된 프로필 중 하나를 선택해주세요.</p>
+    <div class="picker-row" id="pickerRow"></div>
+  </div>
+</div>
+
+<script>
+const loginPanel = document.getElementById('loginPanel');
+const signupPanel = document.getElementById('signupPanel');
+
+document.getElementById('goSignup').addEventListener('click', ()=>{
+  loginPanel.classList.add('hide');
+  signupPanel.classList.add('show');
+});
+document.getElementById('goLogin').addEventListener('click', ()=>{
+  signupPanel.classList.remove('show');
+  loginPanel.classList.remove('hide');
+});
+
+/* ---- API 헬퍼 ---- */
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  if(r.status === 401){
+    sessionStorage.removeItem('ptt_token');
+    sessionStorage.removeItem('ptt_nickname');
+    window.location.href = '/';
+    throw new Error('로그인이 만료됐어요.');
+  }
+  if(!r.ok){
+    let detail = '';
+    try{ detail = (await r.json()).detail || ''; } catch(e){}
+    throw new Error(detail || `요청 실패 (${r.status})`);
+  }
+  return r.json();
+}
+function authHeader(){
+  return { 'Authorization': 'Bearer ' + sessionStorage.getItem('ptt_token') };
+}
+
+/* ---- 화면 표시용 매핑 (백엔드엔 species/breed/weight_kg만 있음, size·age 없음) ---- */
+const speciesEmojiMap = { dog:'🐶', cat:'🐱', bird:'🦜' };
+const speciesKorean = { dog:'강아지', cat:'고양이', bird:'앵무새' };
+
+function goToChat(pet){
+  const params = new URLSearchParams({
+    pet_id: pet.pet_id,
+    name: pet.name,
+    species: pet.species,
+    breed: pet.breed || '',
+    weight: pet.weight_kg || '',
+  });
+  window.location.href = '/static/chat.html?' + params.toString();
+}
+
+/* ---- 프로필 선택 팝업 ---- */
+const profilePickerOverlay = document.getElementById('profilePickerOverlay');
+const pickerRow = document.getElementById('pickerRow');
+
+function openProfilePicker(pets){
+  pickerRow.innerHTML = '';
+  pets.forEach(pet=>{
+    const card = document.createElement('div');
+    card.className = 'picker-card';
+    card.innerHTML = `
+      <div class="pav">${speciesEmojiMap[pet.species] || '🐾'}</div>
+      <div class="pname">${pet.name}</div>
+      <div class="pmeta">${speciesKorean[pet.species] || ''}${pet.breed ? ' · ' + pet.breed : ''}</div>
+    `;
+    card.addEventListener('click', ()=> goToChat(pet));
+    pickerRow.appendChild(card);
+  });
+
+  const addCard = document.createElement('div');
+  addCard.className = 'picker-card add-new';
+  addCard.innerHTML = `<div class="plus">+</div><div class="pname">새로 만들기</div>`;
+  addCard.addEventListener('click', ()=>{ window.location.href = '/static/profile.html'; });
+  pickerRow.appendChild(addCard);
+
+  profilePickerOverlay.classList.add('open');
+}
+
+/* ---- 로그인 성공 이후 공통 처리: 프로필 목록 보고 다음 화면 결정 ---- */
+async function afterLogin(){
+  try{
+    const pets = await api('/api/pets', { headers: authHeader() });
+    if(pets.length >= 2){
+      openProfilePicker(pets);
+    } else if(pets.length === 1){
+      goToChat(pets[0]);
+    } else {
+      window.location.href = '/static/profile.html';
+    }
+  } catch(e){
+    loginError.textContent = '프로필을 불러오지 못했어요 — ' + e.message;
+    loginError.classList.add('show');
+  }
+}
+
+/* ---- 로그인 ---- */
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+loginBtn.addEventListener('click', async ()=>{
+  const email = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value;
+  if(!email || !pw) return;
+
+  loginBtn.disabled = true;
+  const originalText = loginBtn.textContent;
+  loginBtn.textContent = '로그인 중…';
+  loginError.classList.remove('show');
+
+  try{
+    const res = await api('/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, password: pw }),
+    });
+    sessionStorage.setItem('ptt_token', res.access_token);
+    sessionStorage.setItem('ptt_nickname', res.nickname);
+    loginBtn.textContent = '로그인 완료 ✓';
+    loginBtn.style.background = 'var(--moss-dark)';
+    await afterLogin();
+  } catch(e){
+    loginError.textContent = '이메일 또는 비밀번호가 올바르지 않아요.';
+    loginError.classList.add('show');
+    loginBtn.disabled = false;
+    loginBtn.textContent = originalText;
+  }
+});
+
+/* ---- 비밀번호 확인 (클라이언트 형식 체크만, 서버가 최종 검증) ---- */
+const suPw = document.getElementById('suPw');
+const suPw2 = document.getElementById('suPw2');
+const pwHint = document.getElementById('pwHint');
+const idHint = document.getElementById('idHint');
+const suNickname = document.getElementById('suNickname');
+const suId = document.getElementById('suId');
+
+function checkPwMatch(){
+  if(suPw2.value.length === 0){ pwHint.textContent=''; return false; }
+  if(suPw.value.length < 8){
+    pwHint.textContent = '비밀번호는 8자 이상이어야 해요.';
+    pwHint.className = 'hint err';
+    return false;
+  }
+  if(suPw.value === suPw2.value){
+    pwHint.textContent = '비밀번호가 일치해요.';
+    pwHint.className = 'hint ok';
+    return true;
+  } else {
+    pwHint.textContent = '비밀번호가 일치하지 않아요.';
+    pwHint.className = 'hint err';
+    return false;
+  }
+}
+suPw.addEventListener('input', ()=>{ checkPwMatch(); validateSignup(); });
+suPw2.addEventListener('input', ()=>{ checkPwMatch(); validateSignup(); });
+suId.addEventListener('input', validateSignup);
+suNickname.addEventListener('input', validateSignup);
+
+const signupBtn = document.getElementById('signupBtn');
+function validateSignup(){
+  const ok = suNickname.value.trim() && suId.value.trim() && checkPwMatch();
+  signupBtn.disabled = !ok;
+}
+
+signupBtn.addEventListener('click', async ()=>{
+  if(signupBtn.disabled) return;
+  signupBtn.disabled = true;
+  const originalText = signupBtn.textContent;
+  signupBtn.textContent = '가입 중…';
+  idHint.textContent = ''; idHint.className = 'hint';
+
+  try{
+    await api('/api/auth/signup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        email: suId.value.trim(),
+        password: suPw.value,
+        nickname: suNickname.value.trim(),
+      }),
+    });
+    signupBtn.textContent = '가입 완료 ✓ 로그인 해주세요';
+    setTimeout(()=>{
+      signupPanel.classList.remove('show');
+      loginPanel.classList.remove('hide');
+      document.getElementById('loginId').value = suId.value.trim();
+      signupBtn.textContent = originalText;
+      signupBtn.disabled = false;
+    }, 900);
+  } catch(e){
+    idHint.textContent = e.message.includes('409') || e.message.includes('사용') ? '이미 가입된 이메일이에요.' : e.message;
+    idHint.className = 'hint err';
+    signupBtn.textContent = originalText;
+    signupBtn.disabled = false;
+  }
+});
+
+/* ---- 이미 로그인된 상태로 이 페이지에 다시 오면 바로 다음 화면으로 ---- */
+(async function autoResume(){
+  if(!sessionStorage.getItem('ptt_token')) return;
+
+  /* 저장된 토큰이 아직 유효한지 확인.
+     - 401 → api() 헬퍼가 알아서 로그아웃 + 리다이렉트
+     - 404 → user 가 DB 에서 사라졌다 (테이블 초기화 등) → 로그인 화면 유지 */
+  try{
+    await api('/api/users/me', { headers: authHeader() });
+  } catch(e){
+    sessionStorage.removeItem('ptt_token');
+    sessionStorage.removeItem('ptt_nickname');
+    return;  /* 로그인 화면 그대로 보여준다 */
+  }
+  await afterLogin();
+})();
+</script>
+</body>
+</html>
