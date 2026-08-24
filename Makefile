@@ -1,4 +1,4 @@
-.PHONY: help doctor install initdb serve test todo lint fmt verify facts golden eval submit rules vocab index train up db down docker clean
+.PHONY: help doctor install initdb serve test todo lint fmt verify facts golden eval baseline submit rules vocab index train up db down docker clean
 
 help:            ## 이 목록
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -60,6 +60,12 @@ vocab:           ## 사실 표 → 물질 어휘 폐쇄 목록 재생성 (D-59 �
 eval:            ## 골든셋 평가 (정확도 + 지연). 게이트 포함
 	PETTRIAGE_PROFILE=eval python eval/harness/run_eval.py --json eval/reports/latest.json \
 		--fail-under 0.05 --fail-missed 0.30 --min-graded 10
+
+# 0단계 — Django 전환에 손대기 전 기준선. **전환 뒤에는 다시 잴 수 없다** (14 §5 · D-102).
+# 판을 두 번 도는 이유는 소음대다 — `seed` 가 없어 같은 코드도 결과가 흔들리고,
+# 그 폭을 모르면 8단계에서 나온 차이가 전환 탓인지 소음인지 못 가른다.
+baseline:        ## 0단계 · 전환 전 기준선 고정 (2판 + 소음대). 약 15분
+	python scripts/freeze_baseline.py
 
 # 필수 산출물 넷을 `제출/` 한 폴더로 모은다. **손으로 모으지 않는다** —
 # 사본이 원본과 어긋나는 순간 어느 쪽이 진짜인지 알 수 없게 된다 (D-22).
