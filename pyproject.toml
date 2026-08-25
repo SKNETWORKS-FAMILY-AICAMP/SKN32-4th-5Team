@@ -78,9 +78,15 @@ db = [
 ]
 # Django 배달 계층 — 인증·화면·계정/펫/다이어리 (D-99). 추론(FastAPI)과 별도 프로세스라
 # 여기 의존성은 `app/` 이 임포트하지 않는다 — 반대로도 마찬가지다.
+#
+# httpx — GET /api/report가 요약을 FastAPI 내부 API로 위임한다 (D-99 3안,
+# diary/views.py). dev extra에도 있지만 그건 테스트용이고, 이건 런타임에
+# import 되는 실제 의존성이라 여기 따로 선언한다 — 안 그러면 `.[api,db,django]`
+# 만 깐 배포에서 GET /api/report 가 서버 500으로 죽는다.
 django = [
   "Django>=5.1,<5.2",
   "djangorestframework>=3.15,<3.16",
+  "httpx>=0.28,<0.29",
 ]
 # Qwen 을 **로컬에서 서빙**할 때만 (04 비교군 C·D · D-65).
 #

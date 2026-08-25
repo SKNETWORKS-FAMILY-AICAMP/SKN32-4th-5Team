@@ -50,6 +50,7 @@ import os
 from dotenv import load_dotenv
 
 from .ask import router as ask_router
+from .internal_report import router as internal_report_router
 from .meta import router as meta_router
 
 # .env → os.environ. 쉘 변수가 있으면 덮지 않는다.
@@ -67,7 +68,7 @@ class DBRoutersUnavailableError(RuntimeError):
 
 
 #: DB 없이도 도는 것. **여기에 두려면 `[api]` 만으로 임포트돼야 한다.**
-_routers = [meta_router, ask_router]
+_routers = [meta_router, ask_router, internal_report_router]
 
 if os.getenv("DATABASE_URL"):
     try:
@@ -97,5 +98,6 @@ __all__ = [
     "ALL_ROUTERS",
     "DBRoutersUnavailableError",
     "ask_router",
+    "internal_report_router",
     "meta_router",
 ]

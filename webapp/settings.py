@@ -149,6 +149,12 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# ── 추론 서비스(FastAPI) 내부 호출 ──────────────────────────
+# GET /api/report가 요약(LLM)만 여기로 위임한다 (D-99 3안). 외부에 안 열리는
+# 내부망 주소라 로컬 개발 기본값은 127.0.0.1:8000이다 (docs/14 §3.4).
+INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8000")
+
+
 # ── DRF ──────────────────────────────────────────────────
 # ⚠️ 임시 — 세션·Basic 인증만 켜져 있다. JWT냐 세션이냐는 docs/14 §7 미결이라
 # 계정 앱이 정해지면 여기부터 바뀐다. 지금은 Django 로그인(관리자 계정 등)이 되면
