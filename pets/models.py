@@ -19,6 +19,11 @@ SPECIES_CHOICES = [
     ("bird", "새"),
 ]
 
+SIZE_CHOICES = [
+    ("small", "소형"),
+    ("medium", "중형"),
+    ("large", "대형")
+]
 
 class Pet(models.Model):
     pet_id = models.CharField(max_length=64, primary_key=True)
@@ -27,6 +32,14 @@ class Pet(models.Model):
     species = models.CharField(max_length=10, choices=SPECIES_CHOICES)
     breed = models.CharField(max_length=50, null=True, blank=True)
     weight_kg = models.FloatField(null=True, blank=True)
+    #프로필 화면용
+    size = models.CharField(max_length=10, choices=SIZE_CHOICES, blank=True)
+    age = models.CharField(max_length=20, blank=True)  # "2살" · "6개월" 자유 입력
+    gender = models.CharField(max_length=10, blank=True)
+    intro = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)  # 알러지 · 질환
+    photo = models.ImageField(upload_to="pets/", null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -8,6 +8,7 @@ FastAPI 쪽(`src/pettriage/app/`)과 같은 `.env`를 공유한다 — `DATABASE
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from django.conf.global_settings import STATICFILES_DIRS
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -146,6 +147,14 @@ USE_TZ = True
 
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/pets/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
