@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from diary.views import DiaryPageView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('diary.urls')),
+    path('diary/', DiaryPageView.as_view(), name='diary-page'),
 ]

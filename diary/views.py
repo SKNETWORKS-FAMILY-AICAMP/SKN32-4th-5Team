@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 
 import httpx
 from django.conf import settings
+from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -33,6 +34,22 @@ log = logging.getLogger(__name__)
 #: 실제로 덜 보고 만들어진다. 크게 잡는 건 안전하지만(어차피 거기서 또 자름)
 #: 전송량 절감 효과가 준다.
 _NOTE_CHARS_FOR_SUMMARY = 300
+
+
+class DiaryPageView(TemplateView):
+    """GET /diary/ — 기록장 화면.
+
+    `src/pettriage/app/web/diary.html`을 그대로 옮긴 것 — 변수명 등 내용은
+    건드리지 않고 이식만 한다. 로그인·저장·조회는 전부 이
+    템플릿의 JS가 `fetch()`로 `/api/records`·`/api/report`를 호출해서 한다 —
+    이 뷰는 그 정적 화면 하나를 그대로 내보내는 것뿐이다.
+
+    ⚠️ 로그인 화면(`ptt_token`을 sessionStorage에 넣는 곳)이 아직 Django에
+    없다 — 계정 앱이 정해지기 전까지는 FastAPI 쪽 로그인으로 발급받은 토큰을
+    그대로 써야 화면이 동작한다.
+    """
+
+    template_name = "diary/diary.html"
 
 
 class RecordCreateView(APIView):
