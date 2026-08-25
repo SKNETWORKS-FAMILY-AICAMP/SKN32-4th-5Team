@@ -1,0 +1,170 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PetTriage — 로그인</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --ink: #2C2A26;
+    --ink-soft: #6B6558;
+    --ink-faint: #A39C8C;
+    --moss: #4F6B4A;
+    --moss-dark: #3A4F37;
+    --moss-soft: #E4EBE1;
+    --honey: #D89B3D;
+    --clay: #B3542F;
+    --line: #E5DFD2;
+    --danger-soft: #F6E4DB;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh;
+    background: var(--surface);
+    color: var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+  }
+  .stage{
+    width:100%; min-height:100vh;
+    display:grid; grid-template-columns: 1fr 1fr;
+  }
+
+  /* -------- 왼쪽 브랜드 패널 -------- */
+  .side{
+    background: var(--moss-dark);
+    color:#fff;
+    padding: 40px 36px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position:relative; overflow:hidden; height:100vh;
+  }
+  .side::before{
+    content:""; position:absolute; right:-60px; bottom:-60px;
+    width:220px; height:220px; border-radius:50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .side::after{
+    content:""; position:absolute; left:-40px; top:-40px;
+    width:140px; height:140px; border-radius:50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .side-top{ position:relative; z-index:1; }
+  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:50px; }
+  .logo-mark{ width:34px; height:34px; border-radius:10px; background: rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; }
+  .logo-mark svg{ width:18px; height:18px; }
+  .logo-text{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:17px; }
+
+  .side h2{ font-family:'Noto Serif KR', serif; font-size:25px; line-height:1.4; font-weight:700; margin:0 0 14px; }
+  .side p{ font-size:13.5px; line-height:1.7; color: rgba(255,255,255,0.75); max-width:280px; }
+
+  .side-quote{
+    position:relative; z-index:1;
+    background: rgba(255,255,255,0.08);
+    border-radius:16px; padding:16px;
+    font-size:12.5px; line-height:1.6; color: rgba(255,255,255,0.85);
+  }
+  .side-quote .tag{
+    display:inline-flex; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px;
+    background: var(--honey); color:#3a2a0e; margin-bottom:8px;
+  }
+
+  /* -------- 오른쪽 폼 패널 -------- */
+  .form-side{ padding: 60px 40px; overflow-y:auto; height:100vh; }
+  .form-inner{ width:100%; max-width:420px; margin:0 auto; }
+  .form-head{ margin-bottom: 26px; }
+  .form-head .eyebrow{
+    font-size:11.5px; font-weight:700; color: var(--moss-dark);
+    background: var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:12px;
+  }
+  .form-head h1{ font-family:'Noto Serif KR', serif; font-size:22px; font-weight:700; margin:0 0 6px; }
+  .form-head p{ font-size:13px; color: var(--ink-soft); margin:0; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--ink-soft); margin-bottom:6px; }
+  .field input{
+    width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    font-size:13.5px; font-family:inherit; background: var(--bg); color: var(--ink); outline:none;
+  }
+  .field input:focus{ border-color: var(--moss); background:#fff; }
+
+  .btn-primary{
+    width:100%; background: var(--moss); color:#fff; border:none; border-radius:999px;
+    padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    margin-top: 6px;
+  }
+  .btn-primary:hover{ background: var(--moss-dark); }
+
+  .form-foot{ margin-top:18px; text-align:center; font-size:12.5px; color: var(--ink-soft); }
+  .form-foot a{ color: var(--moss-dark); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+
+  .error-box{
+    background: var(--danger-soft); color:#7a3216; border:1px solid #e5c2ac;
+    font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px;
+  }
+
+  @media (max-width: 720px){
+    .stage{ grid-template-columns:1fr; }
+    .side{ display:none; }
+    .form-side{ padding: 34px 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="side">
+    <div class="side-top">
+      <div class="logo">
+        <span class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
+        </span>
+        <span class="logo-text">PetTriage</span>
+      </div>
+      <h2>"이거 먹어도 돼?"를<br>더는 헷갈리지 않게</h2>
+      <p>우리 아이의 첫 안전 매뉴얼. 로그인하고 함께 나눠 먹은 순간을 기록해보세요.</p>
+    </div>
+    <div class="side-quote">
+      <span class="tag">위험</span><br>
+      포도는 절대 나눠주지 마세요. 소량으로도 급성 신부전을 일으킬 수 있어요.
+    </div>
+  </div>
+
+  <div class="form-side">
+    <div class="form-inner">
+      <div class="form-head">
+        <span class="eyebrow">WELCOME BACK</span>
+        <h1>로그인</h1>
+        <p>아이디와 비밀번호를 입력해주세요.</p>
+      </div>
+
+      {% if error %}
+        <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label for="username">아이디</label>
+          <input type="text" id="username" name="username" placeholder="아이디 입력" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" placeholder="비밀번호 입력" required>
+        </div>
+
+        <button type="submit" class="btn-primary">로그인</button>
+      </form>
+
+      <div class="form-foot">
+        아직 계정이 없으신가요? <a href="{% url 'accounts:signup' %}">회원가입</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
