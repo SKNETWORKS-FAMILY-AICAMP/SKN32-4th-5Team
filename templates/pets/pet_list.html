@@ -82,6 +82,13 @@
   }
   .pet-card.add-new .plus{ font-size:26px; margin-bottom:8px; }
   .pet-card.add-new .pname{ color: var(--ink-soft); }
+
+  .pet-cell{ display:flex; flex-direction:column; }
+  .edit-link{
+    display:block; text-align:center; margin-top:8px;
+    font-size:11.5px; color: var(--ink-faint); text-decoration:none;
+  }
+  .edit-link:hover{ color: var(--moss-dark); text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -109,8 +116,9 @@
 
   <div class="pet-grid">
     {% for pet in pets %}
+    <div class="pet-cell">
       <a class="pet-card"
-         href="/static/chat.html?name={{ pet.name|urlencode }}&species={{ pet.species }}&size={{ pet.size }}&age={{ pet.age|urlencode }}&gender={{ pet.gender|urlencode }}&weight={{ pet.weight_kg|default_if_none:'' }}&notes={{ pet.notes|urlencode }}">
+         href="/chat/?pet_id={{ pet.pet_id }}">
         <div class="av">
           {% if pet.photo %}
             <img src="{{ pet.photo.url }}" alt="{{ pet.name }}">
@@ -128,6 +136,8 @@
           <div class="pnotes">⚠️ {{ pet.notes }}</div>
         {% endif %}
       </a>
+      <a class="edit-link" href="{% url 'pets:edit' pet.pet_id %}">⚙️ 프로필 설정</a>
+      </div>
     {% endfor %}
 
     <a class="pet-card add-new" href="{% url 'pets:create' %}">

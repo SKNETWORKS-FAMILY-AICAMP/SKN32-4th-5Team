@@ -1,9 +1,9 @@
 {% load static %}<!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns="http://www.w3.org/1999/html">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PetTriage — 프로필 생성</title>
+<title>PetTriage — {% if pet %}프로필 설정{% else %}프로필 생성{% endif %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -34,7 +34,7 @@
     display:grid; grid-template-columns: 0.85fr 1.15fr;
   }
 
-  /* -------- 왼쪽 진행상태 패널 -------- */
+  /* -------- 왼쪽 패널 -------- */
   .side{
     background: var(--moss-dark); color:#fff;
     padding: 40px 34px;
@@ -58,6 +58,12 @@
   .step.done .step-dot{ background: var(--honey); color:#3a2a0e; }
   .step.active{ color:#fff; font-weight:700; }
   .step.active .step-dot{ background:#fff; color: var(--moss-dark); }
+
+  .side-back{
+    position:relative; z-index:1; font-size:12.5px; color: rgba(255,255,255,0.75);
+    text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+  }
+  .side-back:hover{ color:#fff; }
 
   /* -------- 오른쪽 폼 -------- */
   .form-side{ padding: 48px 44px; overflow-y:auto; height:100vh; }
@@ -135,11 +141,28 @@
   }
   .btn-secondary:hover{ background: var(--moss-soft); }
 
+  .danger-zone{ margin-top:28px; padding-top:20px; border-top:1px solid var(--line); }
+  .danger-zone .dz-label{ font-size:11.5px; font-weight:700; color: var(--ink-faint); margin-bottom:8px; }
+  .btn-danger{
+    background: transparent; color: var(--clay); border:1px solid #e5c2ac;
+    border-radius:999px; padding:9px 18px; font-size:12.5px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn-danger:hover{ background: var(--danger-soft); }
+
   @media (max-width: 760px){
     .stage{ grid-template-columns:1fr; }
     .side{ display:none; }
     .form-side{ padding: 30px 24px; }
   }
+  .remove-photo{
+    display:inline-block; margin-top:8px; margin-left:6px;
+    background:transparent; border:1px solid var(--line); border-radius:999px;
+    padding:5px 11px; font-size:11.5px; font-weight:700; color: var(--ink-faint);
+    cursor:pointer; font-family:inherit;
+  }
+  .remove-photo:hover{ border-color:#e5c2ac; color: var(--clay); }
+  .remove-photo input{ width:auto; margin:0; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -154,23 +177,37 @@
         </span>
         <span class="logo-text">PetTriage</span>
       </div>
-      <h2>이제부터 같이<br>나눠 먹을 준비</h2>
-      <p>프로필을 만들면 우리 아이 기준으로 어떤 음식을 한입 나눠줘도 되는지 알려드려요.</p>
 
-      <div class="steps">
-        <div class="step done"><span class="step-dot">✓</span>회원가입</div>
-        <div class="step active"><span class="step-dot">2</span>프로필 생성</div>
-        <div class="step"><span class="step-dot">3</span>한입 나누기 시작</div>
-      </div>
+      {% if pet %}
+        <h2>{{ pet.name }}의<br>프로필 설정</h2>
+        <p>바뀐 정보를 반영하면 위험도 안내도 함께 정확해져요. 체중이 달라졌다면 꼭 갱신해주세요.</p>
+      {% else %}
+        <h2>이제부터 같이<br>나눠 먹을 준비</h2>
+        <p>프로필을 만들면 우리 아이 기준으로 어떤 음식을 한입 나눠줘도 되는지 알려드려요.</p>
+
+        <div class="steps">
+          <div class="step done"><span class="step-dot">✓</span>회원가입</div>
+          <div class="step active"><span class="step-dot">2</span>프로필 생성</div>
+          <div class="step"><span class="step-dot">3</span>한입 나누기 시작</div>
+        </div>
+      {% endif %}
     </div>
+
+    <a class="side-back" href="{% url 'pets:list' %}">← 내 반려동물 목록</a>
   </div>
 
   <div class="form-side">
     <div class="form-inner">
       <div class="form-head">
-        <span class="eyebrow">STEP 2 · PET PROFILE</span>
-        <h1>반려동물 프로필</h1>
-        <p>사진, 이름, 품종, 크기를 알려주시면 우리 아이가 나눠 먹어도 되는 음식을 정확히 안내해드려요.</p>
+        {% if pet %}
+          <span class="eyebrow">PET SETTINGS</span>
+          <h1>프로필 수정</h1>
+          <p>바꾸고 싶은 항목만 고쳐주세요.</p>
+        {% else %}
+          <span class="eyebrow">STEP 2 · PET PROFILE</span>
+          <h1>반려동물 프로필</h1>
+          <p>사진, 이름, 품종, 크기를 알려주시면 우리 아이가 나눠 먹어도 되는 음식을 정확히 안내해드려요.</p>
+        {% endif %}
       </div>
 
       {% if error %}
@@ -183,75 +220,93 @@
         <!-- 사진 업로드 -->
         <div class="photo-row">
           <label class="photo-circle" id="photoCircle">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="#4F6B4A" stroke-width="1.6"/><circle cx="12" cy="13" r="3.4" stroke="#4F6B4A" stroke-width="1.6"/></svg>
-            <img id="photoPreview" alt="">
+            <svg viewBox="0 0 24 24" fill="none" {% if pet.photo %}style="display:none;"{% endif %}><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="#4F6B4A" stroke-width="1.6"/><circle cx="12" cy="13" r="3.4" stroke="#4F6B4A" stroke-width="1.6"/></svg>
+            <img id="photoPreview" alt="" {% if pet.photo %}src="{{ pet.photo.url }}" style="display:block;"{% endif %}>
           </label>
           <div class="photo-meta">
-            <div><b>프로필 사진</b>을 등록해주세요.</div>
-            <span class="photo-btn" id="photoBtnLabel">사진 선택</span>
+            <div><b>프로필 사진</b>{% if pet.photo %}을 바꿀 수 있어요.{% else %}을 등록해주세요.{% endif %}</div>
+            <span class="photo-btn" id="photoBtnLabel">{% if pet.photo %}사진 변경{% else %}사진 선택{% endif %}</span>
+            {% if pet.photo %}
+              <button type="button" class="remove-photo" id="removePhotoBtn">사진 삭제</button>
+            {% endif %}
           </div>
           <input type="file" id="photoInput" name="photo" accept="image/*">
         </div>
 
         <div class="field">
           <label for="name">이름</label>
-          <input type="text" id="name" name="name" placeholder="예: 콩이" required>
+          <input type="text" id="name" name="name" placeholder="예: 콩이" value="{{ pet.name|default:'' }}" required>
         </div>
 
         <div class="row2">
           <div class="field">
             <label for="age">나이</label>
-            <input type="text" id="age" name="age" placeholder="예: 2살">
+            <input type="text" id="age" name="age" placeholder="예: 2살" value="{{ pet.age|default:'' }}">
           </div>
           <div class="field">
             <label for="gender">성별</label>
-            <input type="text" id="gender" name="gender" placeholder="예: 수컷 / 암컷">
+            <input type="text" id="gender" name="gender" placeholder="예: 수컷 / 암컷" value="{{ pet.gender|default:'' }}">
           </div>
         </div>
 
         <div class="field">
           <label for="weight_kg">체중</label>
           <div style="display:flex; align-items:center; gap:8px;">
-            <input type="number" step="0.1" id="weight_kg" name="weight_kg" placeholder="예: 4.2" style="max-width:140px;">
+            <input type="number" step="0.1" id="weight_kg" name="weight_kg" placeholder="예: 4.2"
+                   value="{{ pet.weight_kg|default_if_none:'' }}" style="max-width:140px;">
             <span style="font-size:12.5px; color: var(--ink-soft);">kg</span>
           </div>
         </div>
 
         <div class="field">
           <label for="intro">한 줄 소개</label>
-          <textarea id="intro" name="intro" rows="2" placeholder="우리 아이를 소개해주세요"></textarea>
+          <textarea id="intro" name="intro" rows="2" placeholder="우리 아이를 소개해주세요">{{ pet.intro|default:'' }}</textarea>
         </div>
 
         <div class="field">
           <label for="notes">특이사항 <span style="font-weight:400; color: var(--ink-faint);">(알러지, 질환이 있는 경우 작성)</span></label>
-          <textarea id="notes" name="notes" rows="2" placeholder="예: 닭고기 알러지, 슬개골 탈구 이력 있음"></textarea>
+          <textarea id="notes" name="notes" rows="2" placeholder="예: 닭고기 알러지, 슬개골 탈구 이력 있음">{{ pet.notes|default:'' }}</textarea>
         </div>
 
         <div class="field">
           <label>품종</label>
           <div class="option-grid" id="speciesGrid">
-            <div class="option-card" data-value="dog"><span class="emoji">🐶</span><span class="label">개</span></div>
-            <div class="option-card" data-value="cat"><span class="emoji">🐱</span><span class="label">고양이</span></div>
-            <div class="option-card" data-value="bird"><span class="emoji">🦜</span><span class="label">앵무새</span></div>
+            <div class="option-card {% if pet.species == 'dog' %}selected{% endif %}" data-value="dog"><span class="emoji">🐶</span><span class="label">개</span></div>
+            <div class="option-card {% if pet.species == 'cat' %}selected{% endif %}" data-value="cat"><span class="emoji">🐱</span><span class="label">고양이</span></div>
+            <div class="option-card {% if pet.species == 'bird' %}selected{% endif %}" data-value="bird"><span class="emoji">🦜</span><span class="label">앵무새</span></div>
           </div>
-          <input type="hidden" name="species" id="speciesInput">
+          <input type="hidden" name="species" id="speciesInput" value="{{ pet.species|default:'' }}">
         </div>
 
         <div class="field">
           <label>크기</label>
           <div class="size-row" id="sizeRow">
-            <div class="size-pill" data-value="small">소형<small>~5kg</small></div>
-            <div class="size-pill" data-value="medium">중형<small>5~15kg</small></div>
-            <div class="size-pill" data-value="large">대형<small>15kg~</small></div>
+            <div class="size-pill {% if pet.size == 'small' %}selected{% endif %}" data-value="small">소형<small>~5kg</small></div>
+            <div class="size-pill {% if pet.size == 'medium' %}selected{% endif %}" data-value="medium">중형<small>5~15kg</small></div>
+            <div class="size-pill {% if pet.size == 'large' %}selected{% endif %}" data-value="large">대형<small>15kg~</small></div>
           </div>
-          <input type="hidden" name="size" id="sizeInput">
+          <input type="hidden" name="size" id="sizeInput" value="{{ pet.size|default:'' }}">
         </div>
 
-        <input type="hidden" name="action" id="actionInput" value="done">
-
-        <button type="submit" class="btn-primary" id="saveBtn">프로필 저장하고 한입 나누러 가기</button>
-        <button type="submit" class="btn-secondary" id="addAnotherBtn">저장하고 추가 프로필 만들기</button>
+        {% if pet %}
+          <button type="submit" class="btn-primary">저장하기</button>
+        {% else %}
+          <input type="hidden" name="action" id="actionInput" value="done">
+          <button type="submit" class="btn-primary" id="saveBtn">프로필 저장하고 한입 나누러 가기</button>
+          <button type="submit" class="btn-secondary" id="addAnotherBtn">저장하고 추가 프로필 만들기</button>
+        {% endif %}
       </form>
+
+      {% if pet %}
+        <div class="danger-zone">
+          <div class="dz-label">프로필 삭제</div>
+          <form method="post" action="{% url 'pets:delete' pet.pet_id %}"
+                onsubmit="return confirm('{{ pet.name }} 프로필을 삭제할까요? 되돌릴 수 없어요.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-danger">{{ pet.name }} 프로필 삭제</button>
+          </form>
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -300,10 +355,37 @@ document.querySelectorAll('#sizeRow .size-pill').forEach(pill=>{
   });
 });
 
-/* ---- 어느 버튼으로 저장했는지 서버에 알려준다 ---- */
+/* ---- 등록 화면에서만: 어느 버튼으로 저장했는지 서버에 알려준다 ---- */
 const actionInput = document.getElementById('actionInput');
-document.getElementById('saveBtn').addEventListener('click', ()=>{ actionInput.value = 'done'; });
-document.getElementById('addAnotherBtn').addEventListener('click', ()=>{ actionInput.value = 'add_another'; });
+if(actionInput){
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ actionInput.value = 'done'; });
+  document.getElementById('addAnotherBtn').addEventListener('click', ()=>{ actionInput.value = 'add_another'; });
+}
+
+/* ---- 사진 삭제 — 화면은 그대로 두고 사진만 지운다 ---- */
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+if(removePhotoBtn){
+  removePhotoBtn.addEventListener('click', async ()=>{
+    if(!confirm('프로필 사진을 삭제할까요?')) return;
+
+    const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const res = await fetch("{% url 'pets:photo_delete' pet.pet_id %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': token },
+    });
+
+    if(res.ok){
+      photoPreview.src = '';
+      photoPreview.style.display = 'none';
+      photoIcon.style.display = 'block';
+      photoInput.value = '';
+      photoBtnLabel.textContent = '사진 선택';
+      removePhotoBtn.remove();
+    } else {
+      alert('삭제하지 못했어요. 잠시 후 다시 시도해주세요.');
+    }
+  });
+}
 </script>
 </body>
 </html>
