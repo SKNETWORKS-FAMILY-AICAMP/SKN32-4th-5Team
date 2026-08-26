@@ -134,6 +134,11 @@ DATABASES = {"default": _database_from_url(_database_url)}
 
 # ── 비밀번호 검증 ────────────────────────────────────────────
 
+# 🔒 **D-104 — `AUTH_USER_MODEL` 을 설정하지 않는다.** Django 기본 `auth.User`(정수 PK)를
+#    쓰기로 확정했다 (2026-08-26). 여기에 커스텀 모델을 지정하면 `pets` · `diary_entries` 의
+#    "주인" 칸 타입이 바뀌고, 마이그레이션이 한 번이라도 적용된 뒤에는 되돌리기가 매우 비싸다.
+#    바꾸려면 D-104 를 먼저 뒤집는다. 배경은 `accounts/models.py` 머리말.
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
