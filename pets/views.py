@@ -52,7 +52,7 @@ def pet_create(request):
 
             if request.POST.get("action") == "add_another":
                 return redirect("pets:create")
-            return redirect("pets:list")
+            return redirect(f"/chat/?pet_id={pet.pet_id}")
 
     return render(request, "pets/pet_form.html", {"error": error})
 

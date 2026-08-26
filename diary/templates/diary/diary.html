@@ -1,74 +1,18 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STP — 기록장</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg: #FAF6EF;
-    --surface: #FFFFFF;
-    --ink: #2C2A26;
-    --ink-soft: #6B6558;
-    --ink-faint: #A39C8C;
-    --moss: #4F6B4A;
-    --moss-dark: #3A4F37;
-    --moss-soft: #E4EBE1;
-    --honey: #D89B3D;
-    --honey-soft: #FBEEDA;
-    --clay: #B3542F;
-    --clay-soft: #F6E4DB;
-    --amber: #C98A1E;
-    --line: #E5DFD2;
-    --sidebar-w: 268px;
-  }
-  *{ box-sizing:border-box; }
-  html, body{ height:100%; }
-  body{ margin:0; background: var(--bg); color: var(--ink); font-family:'Noto Sans KR', sans-serif; display:flex; }
+{% extends 'chat/base.html' %}
 
-  /* ============ 사이드바 (채팅 화면과 동일) ============ */
-  .sidebar{ width: var(--sidebar-w); flex-shrink:0; background: var(--moss-dark); color:#fff; display:flex; flex-direction:column; height:100vh; position:sticky; top:0; }
-  .sidebar-top{ padding: 22px 18px 16px; border-bottom:1px solid rgba(255,255,255,0.14); }
-  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:20px; }
-  .logo-mark{ width:32px; height:32px; border-radius:9px; background: rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .logo-mark svg{ width:17px; height:17px; }
-  .logo-text{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:16px; }
-  .sidebar-profile{ display:flex; align-items:flex-start; gap:11px; }
-  .sidebar-profile .av{ width:44px; height:44px; border-radius:50%; background: var(--honey); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
-  .sidebar-profile .nm{ font-weight:700; font-size:14px; }
-  .sidebar-profile .meta{ font-size:11px; color: rgba(255,255,255,0.65); margin-top:3px; line-height:1.55; }
-  .sidebar-notes{
-    display:none; margin-top:12px; background: rgba(216,155,61,0.18); border:1px solid rgba(216,155,61,0.4);
-    border-radius:10px; padding:8px 10px; font-size:10.5px; line-height:1.5; color: rgba(255,255,255,0.92);
-  }
-  .sidebar-notes.show{ display:block; }
-  .sidebar-list{ padding: 12px 10px; display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
-  .sidebar-item{ display:flex; align-items:center; gap:12px; padding: 10px 12px; border-radius:12px; font-size:13px; color: rgba(255,255,255,0.82); cursor:pointer; background:none; border:none; font-family:inherit; text-align:left; width:100%; }
-  .sidebar-item:hover{ background: rgba(255,255,255,0.08); }
-  .sidebar-item.active{ background: rgba(255,255,255,0.14); color:#fff; font-weight:700; }
-  .sidebar-item .ic{ width:17px; text-align:center; opacity:.9; font-size:14px; }
-  .sidebar-section-label{ font-size:10.5px; color: rgba(255,255,255,0.42); font-weight:700; padding: 14px 12px 4px; letter-spacing:.4px; }
-  .sidebar-foot{ padding: 14px 18px 18px; border-top:1px solid rgba(255,255,255,0.14); }
-  .sidebar-foot button{ width:100%; background: rgba(255,255,255,0.1); color:#fff; border:none; border-radius:999px; padding:9px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; }
-  .sidebar-foot button:hover{ background: rgba(255,255,255,0.18); }
-  .overlay{ display:none; }
+{% block title %}PetTriage — 기록장{% endblock %}
 
-  /* ============ 메인 ============ */
-  .main{ flex:1; min-width:0; display:flex; flex-direction:column; height:100vh; }
-  .topbar{ display:flex; align-items:center; padding: 18px 30px; border-bottom:1px solid var(--line); flex-shrink:0; background: var(--surface); }
-  .menu-btn{ display:none; }
-  .welcome-chip{
-    display:inline-flex; align-items:center; gap:6px;
-    padding: 6px 12px; border-radius: 999px;
-    background: var(--moss-soft); color: var(--moss-dark);
-    font-size: 12.5px; font-weight: 600; white-space:nowrap;
-    flex-shrink:0; margin-left:auto;
-  }
-  .topbar-copy .eyebrow{ font-size:11px; font-weight:700; color: var(--moss-dark); background: var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:8px; }
-  .topbar-copy h1{ font-family:'Noto Serif KR', serif; font-size:20px; font-weight:700; margin:0 0 4px; }
-  .topbar-copy p{ font-size:12.5px; color: var(--ink-soft); margin:0; }
+{% block nav_history_active %}{% endblock %}
+{% block nav_diary_active %}active{% endblock %}
+
+{% block eyebrow %}<span class="eyebrow">DIARY</span>{% endblock %}
+{% block heading %}기록장{% endblock %}
+{% block subheading %}{{ pet.name|default:"콩이" }}와 함께한 하루하루를 남겨보세요.{% endblock %}
+
+{% block extra_style %}
+  /* content 컨테이너를 풀사이즈 · padding 0 으로 (base.html 기본은 중앙 760px) */
+  .content{ padding:0; }
+  .content-inner{ max-width:none; padding:0; display:flex; flex-direction:column; height:100%; }
 
   /* ============ 좌/우 스플릿 ============ */
   .split{ flex:1; display:grid; grid-template-columns: 340px 1fr; overflow:hidden; }
@@ -198,109 +142,50 @@
     .split{ grid-template-columns:1fr; overflow:auto; }
     .left-pane{ border-right:none; border-bottom:1px solid var(--line); }
   }
-  @media (max-width: 900px){
-    .sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:30; transform: translateX(-100%); transition: transform .26s ease; box-shadow: 20px 0 40px rgba(0,0,0,0.18); }
-    .sidebar.open{ transform: translateX(0); }
-    .overlay{ display:block; position:fixed; inset:0; background: rgba(44,42,38,0.35); opacity:0; pointer-events:none; transition:.22s ease; z-index:29; }
-    .overlay.open{ opacity:1; pointer-events:auto; }
-    .menu-btn{ display:flex; width:38px; height:38px; border-radius:12px; border:1px solid var(--line); background: var(--surface); align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; margin-right:12px; }
-    .menu-btn svg{ width:18px; height:18px; }
-  }
-</style>
-</head>
-<body>
+{% endblock %}
 
-<div class="overlay" id="overlay"></div>
-
-<!-- ============ 사이드바 ============ -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-top">
-    <div class="logo">
-      <span class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
-      </span>
-      <span class="logo-text">Save The Pet</span>
-    </div>
-    <div class="sidebar-profile">
-      <div class="av" id="sbAvatar">🐶</div>
-      <div>
-        <div class="nm" id="sbName">콩이</div>
-        <div class="meta" id="sbMeta">소형견 · 2살</div>
+{% block content %}
+<div class="split">
+  <!-- ===== 왼쪽: 체중그래프 + 캘린더 (고정) ===== -->
+  <div class="left-pane">
+    <div class="panel-card">
+      <h3>📈 체중 변화</h3>
+      <div class="chart-meta">
+        <div class="cur" id="curWeight">- <small>kg</small></div>
+        <div class="delta" id="weightDelta">-</div>
       </div>
+      <svg id="weightChart" viewBox="0 0 300 110" style="width:100%; height:auto; display:block;"></svg>
+      <div class="weight-status" id="weightStatus"></div>
     </div>
-    <div class="sidebar-notes" id="sbNotes"></div>
-  </div>
-  <div class="sidebar-list">
-    <div class="sidebar-section-label">메뉴</div>
-    <button class="sidebar-item" id="navChat"><span class="ic">🔍</span>위험 체크</button>
-    <button class="sidebar-item active"><span class="ic">📖</span>기록장</button>
-    <div class="sidebar-section-label" id="sbManageLabel">콩이 관리</div>
-    <button class="sidebar-item" id="navSettings"><span class="ic">⚙️</span>프로필 설정</button>
-    <button class="sidebar-item" id="navPets"><span class="ic">🐾</span>반려동물 전환 / 추가</button>
-  </div>
-  <div class="sidebar-foot"><button id="logoutBtn">로그아웃</button></div>
-</aside>
 
-<!-- ============ 메인 ============ -->
-<div class="main">
-  <div class="topbar">
-    <button class="menu-btn" id="menuBtn" aria-label="메뉴 열기">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H20" stroke="#2C2A26" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <button class="download-btn" id="openDownloadModal">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 18V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V18" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      기록 리포트 다운로드
     </button>
-    <div class="topbar-copy">
-      <span class="eyebrow">DIARY</span>
-      <h1>기록장</h1>
-      <p id="topP">콩이와 함께한 하루하루를 남겨보세요.</p>
+
+    <div class="panel-card">
+      <div class="cal-head">
+        <div class="cal-nav"><button id="prevMonth">‹</button></div>
+        <div class="month-label" id="monthLabel"></div>
+        <div class="cal-nav"><button id="nextMonth">›</button></div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend"><span class="dot"></span>기록이 있는 날</div>
     </div>
-    <span class="welcome-chip" id="welcomeChip"></span>
+
+    <div class="panel-card" style="background: var(--moss-soft); border-color:#d8e3d5;">
+      <h3>🌱 기록이 곧 데이터가 돼요</h3>
+      <p style="font-size:11.5px; color: var(--moss-dark); line-height:1.7; margin:0;">
+        여기 남긴 하루하루의 기록은 <b>검색 가능한 내부 문서</b>로 쌓여요.
+        나중에 위험 체크에서 질문하면, 공적 자료와 함께 우리 아이의 기록도
+        근거로 활용돼 더 정확한 안내를 받을 수 있어요.
+      </p>
+    </div>
   </div>
 
-  <div class="split">
-
-    <!-- ===== 왼쪽: 체중그래프 + 캘린더 (고정) ===== -->
-    <div class="left-pane">
-
-      <div class="panel-card">
-        <h3>📈 체중 변화</h3>
-        <div class="chart-meta">
-          <div class="cur" id="curWeight">- <small>kg</small></div>
-          <div class="delta" id="weightDelta">-</div>
-        </div>
-        <svg id="weightChart" viewBox="0 0 300 110" style="width:100%; height:auto; display:block;"></svg>
-        <div class="weight-status" id="weightStatus"></div>
-      </div>
-
-      <button class="download-btn" id="openDownloadModal">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 18V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V18" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        기록 리포트 다운로드
-      </button>
-
-      <div class="panel-card">
-        <div class="cal-head">
-          <div class="cal-nav"><button id="prevMonth">‹</button></div>
-          <div class="month-label" id="monthLabel"></div>
-          <div class="cal-nav"><button id="nextMonth">›</button></div>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div class="cal-legend"><span class="dot"></span>기록이 있는 날</div>
-      </div>
-
-      <div class="panel-card" style="background: var(--moss-soft); border-color:#d8e3d5;">
-        <h3>🌱 기록이 곧 데이터가 돼요</h3>
-        <p style="font-size:11.5px; color: var(--moss-dark); line-height:1.7; margin:0;">
-          여기 남긴 하루하루의 기록은 <b>검색 가능한 내부 문서</b>로 쌓여요.
-          나중에 위험 체크에서 질문하면, 공적 자료와 함께 우리 아이의 기록도
-          근거로 활용돼 더 정확한 안내를 받을 수 있어요.
-        </p>
-      </div>
-
-    </div>
-
-    <!-- ===== 오른쪽: 조회 / 편집 ===== -->
-    <div class="right-pane">
-      <div class="right-inner" id="rightInner"></div>
-    </div>
-
+  <!-- ===== 오른쪽: 조회 / 편집 ===== -->
+  <div class="right-pane">
+    <div class="right-inner" id="rightInner"></div>
   </div>
 </div>
 
@@ -329,27 +214,22 @@
 </div>
 
 <script>
-/* ---- 로그인 여부 확인 ---- */
-const authToken = sessionStorage.getItem('ptt_token');
-if(!authToken){
-  window.location.href = '/';
+/* ---- 인증: Django 세션 쿠키 + CSRF 헤더 ---- */
+function getCookie(name){
+  const m = document.cookie.match('(^|;)\\s*' + name + '=([^;]*)');
+  return m ? decodeURIComponent(m[2]) : '';
 }
 function authHeader(){
-  return { 'Authorization': 'Bearer ' + authToken };
+  return { 'X-CSRFToken': getCookie('csrftoken') };
 }
 
-/* ---- 우측 상단 환영 문구 ---- */
-(function fillWelcome(){
-  const nick = sessionStorage.getItem('ptt_nickname');
-  const el = document.getElementById('welcomeChip');
-  if(nick && el){ el.innerHTML = `🐾 ${nick}님 환영합니다`; }
-})();
 async function api(path, opts){
+  opts = opts || {};
+  opts.credentials = 'same-origin';
   const r = await fetch(path, opts);
-  if(r.status === 401){
-    sessionStorage.removeItem('ptt_token');
-    window.location.href = '/';
-    throw new Error('로그인이 만료됐어요.');
+  if(r.status === 401 || r.status === 403){
+    window.location.href = '/accounts/login/';
+    throw new Error('로그인이 필요합니다.');
   }
   if(!r.ok){
     let detail = '';
@@ -359,18 +239,7 @@ async function api(path, opts){
   return r.json();
 }
 
-/* ---------------- 사이드바 토글 (좁은 화면) ---------------- */
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
-document.getElementById('menuBtn').addEventListener('click', ()=>{ sidebar.classList.add('open'); overlay.classList.add('open'); });
-overlay.addEventListener('click', ()=>{ sidebar.classList.remove('open'); overlay.classList.remove('open'); });
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  sessionStorage.removeItem('ptt_token');
-  window.location.href = '/';
-});
-
-/* ---------------- 화면 간 연동: URL 파라미터로 프로필 정보 전달받기 ---------------- */
-const urlParams = new URLSearchParams(window.location.search);
+/* ---- pet 정보: Django 컨텍스트에서 직접 주입 ---- */
 const speciesEmojiMap = { dog:'🐶', cat:'🐱', bird:'🦜' };
 const sizeKorean = { small:'소형', medium:'중형', large:'대형' };
 const speciesKorean = { dog:'견', cat:'묘', bird:'앵무새' };
@@ -381,41 +250,18 @@ function buildSizeLabel(species, size){
 }
 
 const currentPet = {
-  petId: urlParams.get('pet_id') || '',
-  name: urlParams.get('name') || '콩이',
-  species: urlParams.get('species') || 'dog',
-  breed: urlParams.get('breed') || '',
-  size: urlParams.get('size') || '',
-  age: urlParams.get('age') || '',
-  gender: urlParams.get('gender') || '',
-  weight: urlParams.get('weight') || '',
-  notes: urlParams.get('notes') || '',
+  petId:   "{{ pet.pet_id|default:''|escapejs }}",
+  name:    "{{ pet.name|default:'콩이'|escapejs }}",
+  species: "{{ pet.species|default:'dog'|escapejs }}",
+  breed:   "{{ pet.breed|default:''|escapejs }}",
+  size:    "{{ pet.size|default:''|escapejs }}",
+  age:     "{{ pet.age|default:''|escapejs }}",
+  gender:  "{{ pet.gender|default:''|escapejs }}",
+  weight:  "{{ pet.weight_kg|default:''|escapejs }}",
+  notes:   "{{ pet.notes|default:''|escapejs }}",
 };
 currentPet.emoji = speciesEmojiMap[currentPet.species] || '🐾';
 currentPet.sizeLabel = currentPet.breed || buildSizeLabel(currentPet.species, currentPet.size);
-
-document.getElementById('sbAvatar').textContent = currentPet.emoji;
-document.getElementById('sbName').textContent = currentPet.name;
-const metaParts = [currentPet.sizeLabel, currentPet.age, currentPet.gender, currentPet.weight ? `${currentPet.weight}kg` : ''].filter(Boolean);
-document.getElementById('sbMeta').textContent = metaParts.join(' · ');
-document.getElementById('sbManageLabel').textContent = `${currentPet.name} 관리`;
-document.getElementById('topP').textContent = `${currentPet.name}와 함께한 하루하루를 남겨보세요.`;
-
-const sbNotes = document.getElementById('sbNotes');
-if(currentPet.notes){
-  sbNotes.textContent = `⚠️ 특이사항: ${currentPet.notes}`;
-  sbNotes.classList.add('show');
-}
-
-document.getElementById('navChat').addEventListener('click', ()=>{
-  window.location.href = '/static/chat.html?' + urlParams.toString();
-});
-document.getElementById('navSettings').addEventListener('click', ()=>{
-  window.location.href = '/static/pet-settings.html?' + urlParams.toString();
-});
-document.getElementById('navPets').addEventListener('click', ()=>{
-  window.location.href = '/static/pets.html?' + urlParams.toString();
-});
 
 /* ---------------- 날짜 유틸 ---------------- */
 function fmt(d){
@@ -427,15 +273,9 @@ function pretty(dateStr){
   return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${dow})`;
 }
 
-/* ---------------- 기록 데이터 ----------------
-   서버(/api/report)의 timeline을 날짜별로 정리해서 화면에 씀.
-   같은 날 여러 건이면 가장 최근 것을 보여줌 (백엔드에 수정 API가 없어
-   "수정"은 새 기록 추가로 처리되고, 조회 시 최신 건이 보인다).
-
-   ⚠️ 이 기록은 단순 저장이 아니라 **검색 대상 내부 문서**로 쌓인다 (05 §3).
-   벡터DB에 적재되면(WS1 연결 후) 위험 체크 질의 시 함께 검색된다. */
-let entriesByDate = {};   // { 'YYYY-MM-DD': record }
-let photosByDate = {};    // 사진은 백엔드 필드가 없어 화면 세션 안에서만 유지 (DB 붙으면 교체)
+/* ---------------- 기록 데이터 ---------------- */
+let entriesByDate = {};
+let photosByDate = {};
 
 const today = new Date();
 const todayStr = fmt(today);
@@ -446,14 +286,12 @@ let editMode = false;
 async function loadRecords(){
   if(!currentPet.petId) return;
   try{
-    /* 전체 기간 조회 — period 비우면 전체 (records_store.timeline 동작 기준) */
     const q = new URLSearchParams({ pet_id: currentPet.petId, period_from: '', period_to: '' });
     const data = await api('/api/report?' + q, { headers: authHeader() });
     entriesByDate = {};
     (data.timeline || []).forEach(row=>{
       const dateStr = (row.recorded_at || '').slice(0,10);
       if(!dateStr) return;
-      /* 같은 날짜 여러 건 → 나중 것이 덮어씀 (timeline이 저장 순서라고 가정) */
       entriesByDate[dateStr] = row;
     });
   } catch(e){
@@ -461,7 +299,7 @@ async function loadRecords(){
   }
 }
 
-/* ---------------- 적정 체중 범위 (품종·크기 기준 참고용) ---------------- */
+/* ---------------- 적정 체중 범위 ---------------- */
 const idealWeightRanges = {
   dog:  { small:[2, 7], medium:[10, 25], large:[25, 45] },
   cat:  { small:[2.5, 4], medium:[4, 5.5], large:[5.5, 7] },
@@ -616,11 +454,7 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
   renderCalendar();
 });
 
-/* ---------------- 식사기록 변환 ----------------
-   백엔드 meals 는 단순 문자열 배열(list[str])이라 끼니 구분이 없다.
-   화면은 소라 목업의 아침/점심/저녁/간식 4칸을 유지하고,
-   저장할 때 "아침: xxx" 접두사 문자열로 변환해 넣는다.
-   (검색 문서로 적재될 때도 접두사가 함께 남아 어느 끼니인지 읽을 수 있다) */
+/* ---------------- 식사기록 변환 ---------------- */
 const MEAL_PREFIX = { breakfast:'아침', lunch:'점심', dinner:'저녁', snack:'간식' };
 
 function parseMeals(meals){
@@ -633,7 +467,7 @@ function parseMeals(meals){
       const key = Object.keys(MEAL_PREFIX).find(k => MEAL_PREFIX[k] === label);
       if(key){ map[key] = value; return; }
     }
-    map.other.push(m); /* 접두사 없는 옛 형식/자유 입력도 잃지 않고 표시 */
+    map.other.push(m);
   });
   return map;
 }
@@ -653,7 +487,6 @@ const rightInner = document.getElementById('rightInner');
 
 function renderRight(){
   const entry = entriesByDate[selectedDate];
-
   if(entry && !editMode){
     renderViewMode(entry);
   } else {
@@ -686,7 +519,7 @@ function renderViewMode(entry){
       ${photo ? `
       <div class="view-row">
         <div class="ic">📷</div>
-        <div><div class="label">사진</div><img class="diary-photo" src="${photo}"></div>
+        <div><div class="label">사진</div><img class="diary-photo" src="${photo}" alt="기록 사진"></div>
       </div>` : ``}
       <div class="view-row">
         <div class="ic">🍽️</div>
@@ -755,7 +588,7 @@ function renderFormMode(entry){
         <div class="photo-upload">
           <label class="photo-box" id="photoBox">
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="#4F6B4A" stroke-width="1.6"/><circle cx="12" cy="13" r="3.4" stroke="#4F6B4A" stroke-width="1.6"/></svg>
-            <img id="photoPreview" src="${photo || ''}" style="${photo ? 'display:block;' : ''}">
+            <img id="photoPreview" src="${photo || ''}" alt="사진 미리보기" style="${photo ? 'display:block;' : ''}">
           </label>
           <div class="photo-upload-txt">오늘의 순간을 사진으로 남겨보세요.<br><span class="btnlike" id="photoBtnLabel">사진 선택</span></div>
           <input type="file" id="photoInput" accept="image/*" style="display:none;">
@@ -850,13 +683,10 @@ function renderFormMode(entry){
         }),
       });
 
-      /* 사진은 화면 세션 안에서만 유지 (백엔드 필드 없음 — DB 붙으면 업로드로 교체) */
       if(photoPreview.src && photoPreview.style.display === 'block'){
         photosByDate[selectedDate] = photoPreview.src;
       }
 
-      /* indexed — 이 기록이 벡터DB(검색 대상 내부 문서)에 적재됐는지.
-         WS1 연결 전엔 false로 오고, 연결되면 true가 된다. */
       hint.textContent = res.indexed
         ? `저장됨 · ${res.record_id} · 내부 문서로 적재 완료 — 위험 체크에서 함께 검색돼요`
         : `저장됨 · ${res.record_id} · 내부 문서 적재 대기 중 (인덱싱 연결 전)`;
@@ -943,5 +773,4 @@ document.getElementById('confirmDownload').addEventListener('click', async ()=>{
   renderRight();
 })();
 </script>
-</body>
-</html>
+{% endblock %}

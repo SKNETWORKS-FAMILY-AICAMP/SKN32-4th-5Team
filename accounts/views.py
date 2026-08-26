@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 def login_view(request):
     """로그인. 이미 로그인된 사용자는 프로필 목록으로 보낸다."""
     if request.user.is_authenticated:
-        return redirect("/pets/")
+        return redirect("/chat/")
 
     error = None
     if request.method == "POST":
@@ -16,7 +16,7 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect(request.GET.get("next") or "/pets/")
+            return redirect(request.GET.get("next") or "/chat/")
         error = "아이디 또는 비밀번호가 올바르지 않아요."
 
     return render(request, "accounts/login.html", {"error": error})
@@ -41,7 +41,7 @@ def signup_view(request):
         else:
             user = User.objects.create_user(username=username, password=password)
             login(request, user)
-            return redirect("/pets/")
+            return redirect("/chat/")
 
     return render(request, "accounts/signup.html", {"error": error})
 

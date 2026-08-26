@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "accounts",
     "pets",
     "diary",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -71,6 +72,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "chat.context_processors.active_pet",
             ],
         },
     },
@@ -153,7 +155,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/pets/"
+LOGIN_REDIRECT_URL = "/chat/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

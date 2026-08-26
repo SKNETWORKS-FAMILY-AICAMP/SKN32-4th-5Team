@@ -362,7 +362,8 @@ if(actionInput){
   document.getElementById('addAnotherBtn').addEventListener('click', ()=>{ actionInput.value = 'add_another'; });
 }
 
-/* ---- 사진 삭제 — 화면은 그대로 두고 사진만 지운다 ---- */
+{% if pet.pet_id %}
+/* ---- 사진 삭제 — 화면은 그대로 두고 사진만 지운다 (수정 화면 전용) ---- */
 const removePhotoBtn = document.getElementById('removePhotoBtn');
 if(removePhotoBtn){
   removePhotoBtn.addEventListener('click', async ()=>{
@@ -386,6 +387,7 @@ if(removePhotoBtn){
     }
   });
 }
+{% endif %}
 </script>
 </body>
 </html>

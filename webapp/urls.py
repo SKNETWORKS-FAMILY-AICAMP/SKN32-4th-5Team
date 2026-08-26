@@ -29,6 +29,7 @@ urlpatterns = [
     path('diary/', DiaryPageView.as_view(), name='diary-page'),
     path('accounts/', include('accounts.urls')),
     path('pets/', include('pets.urls')),
+    path('', include('chat.urls')),
 ]
 
 if settings.DEBUG:
