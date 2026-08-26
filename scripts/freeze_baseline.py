@@ -83,7 +83,10 @@ def git(*args: str) -> str:
 # ① 사전 점검 — 여기서 막는 것이 6분짜리 판을 버리는 것보다 싸다
 # ─────────────────────────────────────────────────────────────
 def _venv_state() -> tuple[bool | None, Path]:
-    """런처의 `checks.in_venv()` 를 **그대로 부른다** — venv 경로 규칙을 두 벌 두지 않는다 (D-22)."""
+    """런처의 `checks.in_venv()` 를 **그대로 부른다**.
+
+    venv 경로 규칙을 두 벌 두지 않는다 (D-22).
+    """
     launcher = ROOT / "PetTriage_Launcher"
     if not launcher.exists():
         return None, ROOT / ".venv"
@@ -165,7 +168,10 @@ def preflight(allow_dirty: bool, force: bool) -> list[str]:
             warn.append(f"    {line}")
 
     if TAG in git("tag").splitlines():
-        msg = f"태그 `{TAG}` 가 이미 있다 — 기준선은 이미 박혔다. 다시 박으면 8단계의 기준이 움직인다"
+        msg = (
+            f"태그 `{TAG}` 가 이미 있다 — 기준선은 이미 박혔다. "
+            "다시 박으면 8단계의 기준이 움직인다"
+        )
         (warn if force else fatal).append(msg)
 
     goldens = sorted(GOLDEN_DIR.glob("golden_*.csv"))
@@ -308,7 +314,7 @@ def summary_md(reports: list[dict], ov: dict, arm: str, elapsed: list[float]) ->
         f"통과가 갈린 건 {len(ov['pass_flipped'])}건"
         + (f" ({', '.join(ov['pass_flipped'])})" if ov["pass_flipped"] else ""),
         "",
-        "> 🔴 **전환 후 차이가 이 폭 안이면 \"달라졌다\"고 말하지 않는다.**",
+        '> 🔴 **전환 후 차이가 이 폭 안이면 "달라졌다"고 말하지 않는다.**',
         "> 밖이면 `scripts/diff_reports.py` 로 어느 건이 어디로 갔는지 먼저 본다 —",
         "> 총계만 보면 방향을 못 읽는다 (틀리던 건이 거절로 빠져도 일치도는 오른다).",
         "",

@@ -35,6 +35,12 @@ dependencies = [
   # `graph/state.py` 가 직접 임포트한다. pydantic 이 어차피 끌고 오지만,
   # **직접 임포트하는 것은 직접 선언한다** — 남의 의존성에 얹으면 조용히 끊긴다.
   "typing-extensions>=4.12",
+  # `app/routes/__init__.py` 가 최상단에서 `load_dotenv` 를 부른다 (2026-08-24).
+  #   **상시 임포트 경로다.** 없으면 `.[api]` 만 깐 환경에서 앱이 통째로 임포트 실패한다 —
+  #   email-validator·langgraph 와 같은 사고이고, 그 파일 자신의 머리말이 적어 둔
+  #   D-70(*"의존성이 늘어난 모듈은 분류가 바뀐 것이다"*)의 재발이다.
+  #   pydantic-settings 가 끌고 오지만 **직접 임포트하는 것은 직접 선언한다.**
+  "python-dotenv>=1.0,<2",
 ]
 
 [project.optional-dependencies]
@@ -87,6 +93,9 @@ django = [
   "Django>=5.1,<5.2",
   "djangorestframework>=3.15,<3.16",
   "httpx>=0.28,<0.29",
+  # pets 앱의 ImageField(프로필 사진)가 요구한다 (2026-08-26, 이근준 pets 이관).
+  # 없으면 `python manage.py migrate` 단계에서부터 ImportError로 막힌다.
+  "Pillow>=11.1,<12",
 ]
 # Qwen 을 **로컬에서 서빙**할 때만 (04 비교군 C·D · D-65).
 #

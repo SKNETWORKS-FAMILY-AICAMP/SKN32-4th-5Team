@@ -28,7 +28,10 @@ if not _secret_key:
     )
 SECRET_KEY = _secret_key
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+# 🔴 **기본값은 false 다.** `.env` 를 빠뜨린 배포에서 디버그 페이지가 켜진 채 뜨는 것이
+#    가장 비싼 실패다. 로컬은 `.env` 에 `DJANGO_DEBUG=true` 를 넣는다 (.env.example).
+#    SECRET_KEY 는 없으면 기동을 막고(D-41), DEBUG 는 없으면 안전한 쪽으로 간다.
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 
@@ -163,8 +166,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ── 추론 서비스(FastAPI) 내부 호출 ──────────────────────────
 # GET /api/report가 요약(LLM)만 여기로 위임한다 (D-99 3안). 외부에 안 열리는
-# 내부망 주소라 로컬 개발 기본값은 127.0.0.1:8000이다 (docs/14 §3.4).
-INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8000")
+# 내부망 주소다 (docs/14 §3.4).
+#   🔴 **8001 이다.** 8000 은 Django 자기 포트라, 그 값이면 자기 자신을 부른다
+#      (2026-08-24 수정 — nginx `upstream fastapi` 도 8001 이다).
+INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8001")
+
+
+# ── 다이어리 체중 급변 알림 (D-103) ──────────────────────────
+# **변화율은 사용자 기록에서 나오지만 임계값은 외부 주장이다.** 그래서 코드가 아니라
+# 설정에 둔다 (D-41). `configs/*.yaml` 이 아니라 여기인 이유는 이것이 **Django 쪽 기능**
+# 이라서다 — 추론 파이프라인 설정과 섞지 않는다. 판정 경로로 옮겨 가면 그때 같이 옮긴다.
+#
+#   5% 미만          — 알리지 않는다 (정상 범위)
+#   5% 이상 10% 미만 — "당분간 지켜봐 주세요"
+#   10% 이상          — "수의사와 상담해보세요"
+DIARY_WEIGHT_ALERT_WATCH_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_WATCH_PCT", "5.0"))
+DIARY_WEIGHT_ALERT_VET_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_VET_PCT", "10.0"))
 
 
 # ── DRF ──────────────────────────────────────────────────
