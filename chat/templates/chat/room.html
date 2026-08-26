@@ -27,6 +27,8 @@
   .risk-row.info .risk-dot{ background:#8b8578; }         .risk-row.info{ color:#6b6558; }
 
   .explain{ font-size:13.5px; line-height:1.7; color:var(--ink); margin-bottom:10px; }
+  .guess-note{ font-size:11.5px; line-height:1.6; color:var(--ink-soft);
+    margin-top:10px; padding-top:9px; border-top:1px dashed #d8d2c2; }
   .amount-box{ display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #d8e3d5;
     border-radius:11px; padding:9px 12px; margin-bottom:10px; }
   .amount-box.warn{ border-color:#e7d4b8; }
@@ -202,6 +204,16 @@ function renderAnswered(data){
   explain.className = "explain";
   explain.textContent = data.answer;
   bubble.appendChild(explain);
+
+  // **교정했다는 사실 자체가 답의 일부다.** 밝히지 않으면 보호자는
+  // 자기 말이 바뀐 것을 모른 채 답을 받고, 정정할 기회를 잃는다.
+  if(data.corrected_from){
+    const note = document.createElement("div");
+    note.className = "guess-note";
+    note.textContent =
+      `🔎 '${data.corrected_from}'을(를) ${data.identified_substance}(으)로 이해했어요.`;
+    bubble.appendChild(note);
+  }
 
   if(t.escalation_conditions && t.escalation_conditions.length){
     const box = document.createElement("div");

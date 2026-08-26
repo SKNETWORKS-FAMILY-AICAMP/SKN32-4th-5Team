@@ -51,6 +51,15 @@ class Slots(TypedDict, total=False):
     #: 만으로는 사용자가 자기 말(`프라이팬`)과 연결하지 못해 **정정할 기회를 잃는다** (D-59 ④).
     #: 확정으로 올라온 경우에는 키를 두지 않는다 (D-10).
     substance_surface: str
+    #: **표기 흔들림 교정을 탔을 때 사용자가 실제로 쓴 말** (`초콜렛`).
+    #:
+    #: `substance_surface` 와 모양은 같지만 **다른 사실**이다. 저쪽은
+    #: *다른 것으로 봤다*(`프라이팬`→`PTFE`), 이쪽은 *같은 말로 봤다*
+    #: (`초콜렛`→`초콜릿`). 섞으면 화면이 사용자가 이미 말한 것을
+    #: "가정했습니다" 라고 되돌려주고, 추정 비율 통계도 부풀려진다.
+    #:
+    #: 교정을 타지 않았으면 키를 두지 않는다 (D-10).
+    substance_corrected_from: str
     amount_g: float
     elapsed_hours: float
     signs: list[str]
@@ -185,10 +194,10 @@ def set_substance(slots: Slots, name: str | None, species: str | None = None) ->
     옮기지 않으면 `프라이팬 → PTFE` 같은 도약이 확정처럼 나가고, 그것이 환각이다.
     `tests/todo/test_graph_nodes.py` 가 노드 구현이 옮기는지 본다.
     """
-    from ..compute.vocabulary import resolve_substance
+    from ..compute.vocabulary import resolve_substance_lenient
 
     out: Slots = dict(slots)  # type: ignore[assignment]
-    r = resolve_substance(name or "", species or slots.get("species"))
+    r = resolve_substance_lenient(name or "", species or slots.get("species"))
     if r.name is None:
         out.pop("substance", None)
         if r.surface:
@@ -215,6 +224,13 @@ def set_substance(slots: Slots, name: str | None, species: str | None = None) ->
     else:
         out.pop("substance_is_assumed", None)
         out.pop("substance_surface", None)
+
+    # **교정은 추정과 다른 사실이다.** 위 블록을 건드리지 않고 따로 남긴다.
+    if r.how == "교정":
+        out["substance_corrected_from"] = r.surface
+    else:
+        out.pop("substance_corrected_from", None)
+
     return out
 
 
