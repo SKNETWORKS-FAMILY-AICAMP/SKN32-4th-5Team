@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """요구사항 정의서(`docs/10`)의 **정합성**을 검사한다 — 내용이 아니라 참조를 본다.
 
     python scripts/check_requirements.py

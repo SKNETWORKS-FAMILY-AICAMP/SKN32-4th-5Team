@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """산출물 문서가 **주장하는 값**이 실제와 같은지 대조한다.
 
     python scripts/check_docs.py            # 파일만 읽는다 (빠르다)
@@ -43,8 +42,13 @@ def _read(rel: str) -> str:
 def _docs_text() -> dict[str, str]:
     """4차 산출물 문서만 본다. archive-3rd 와 팀원 폴더는 대상이 아니다."""
     out = {}
-    for name in ("10_요구사항정의서", "11_화면설계서", "12_시스템구성도",
-                 "13_테스트계획", "14_전환설계"):
+    for name in (
+        "10_요구사항정의서",
+        "11_화면설계서",
+        "12_시스템구성도",
+        "13_테스트계획",
+        "14_전환설계",
+    ):
         p = DOCS / f"{name}.md"
         if p.exists():
             out[name] = p.read_text(encoding="utf-8")
@@ -57,6 +61,12 @@ def _docs_text() -> dict[str, str]:
 #: 줄은 실물에 대한 주장이 아니라 **이력**이다. 기계는 그 차이를 못 읽으므로 사람이 표시한다.
 #: 남용하면 검사가 무의미해지니, **왜 제외인지를 표시 뒤에 적는다.**
 IGNORE = "대조제외"
+
+#: 문서가 백틱으로 가리키는 저장소 안의 파일 경로.
+PATH_RE = (
+    r"`((?:src|templates|chat|pets|diary|accounts|webapp|docker|configs|eval|scripts)"
+    r"/[\w./\-]+\.\w+)`"
+)
 
 
 def claim(doc: str, text: str, pattern: str, label: str, expected: str) -> None:
@@ -90,7 +100,9 @@ def real_config() -> dict[str, str]:
     for key in ("top_k", "score_threshold", "embedding_model"):
         m = re.search(rf"^\s*{key}\s*:\s*([^\s#]+)", y, re.M)
         if m:
-            out[key] = m.group(1).strip().rstrip("0").rstrip(".") if key == "score_threshold" else m.group(1)
+            v = m.group(1)
+            # `0.50` 과 `0.5` 를 같은 값으로 본다 — 문서는 어느 쪽으로도 적는다.
+            out[key] = v.rstrip("0").rstrip(".") if key == "score_threshold" else v
     return out
 
 
@@ -122,8 +134,12 @@ def real_test_count() -> str:
     try:
         r = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q"],
-            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=300,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -157,15 +173,22 @@ def main() -> int:
             claim(name, text, r"Django[^\n|]{0,20}?[`:*\s]{1,4}(80\d\d)", "Django 포트", dj)
             claim(name, text, r"(?:FastAPI|추론)[^\n|]{0,24}?[`:*\s]{1,4}(80\d\d)", "추론 포트", fa)
         # settings.py 의 기본값이 추론 포트를 가리키는가
-        m = re.search(r'INFERENCE_INTERNAL_URL\s*=\s*os\.environ\.get\([^)]*?:(\d+)', _read("webapp/settings.py"))
+        pat = r"INFERENCE_INTERNAL_URL\s*=\s*os\.environ\.get\([^)]*?:(\d+)"
+        m = re.search(pat, _read("webapp/settings.py"))
         if m and m.group(1) != fa:
-            err.append(f"webapp/settings.py 의 INFERENCE_INTERNAL_URL 기본값이 :{m.group(1)} — 추론은 :{fa} 다")
+            err.append(
+                f"settings.py 의 INFERENCE_INTERNAL_URL 기본값이 :{m.group(1)} — "
+                f"추론은 :{fa} 다"
+            )
         elif m:
             ok.append(f"settings.py: INFERENCE_INTERNAL_URL → :{fa}")
 
     cfg = real_config()
     if cfg:
-        print(f"  · 실물 설정 — top_k {cfg.get('top_k')} · 임계 {cfg.get('score_threshold')} · {cfg.get('embedding_model')}")
+        print(
+            f"  · 실물 설정 — top_k {cfg.get('top_k')} · "
+            f"임계 {cfg.get('score_threshold')} · {cfg.get('embedding_model')}"
+        )
         for name, text in docs.items():
             if "top_k" in cfg:
                 claim(name, text, r"top[_ ]?k\D{0,12}?\*{0,2}(\d+)", "top_k", cfg["top_k"])
@@ -183,7 +206,8 @@ def main() -> int:
         print(f"  · 기준선 — 골든셋 {base.get('n')}건 · answered p95 {base.get('answered_p95')}s")
         for name, text in docs.items():
             if "answered_p95" in base:
-                claim(name, text, r"p95[^\n|]{0,12}?\*{0,2}(\d+\.\d)s", "p95 지연", base["answered_p95"])
+                pat = r"p95[^\n|]{0,12}?\*{0,2}(\d+\.\d)s"
+                claim(name, text, pat, "p95 지연", base["answered_p95"])
     else:
         print("  · 기준선 리포트 없음 — 지연·건수 대조를 건너뛴다")
 
@@ -191,7 +215,7 @@ def main() -> int:
     missing = set()
     for name, text in docs.items():
         body = "\n".join(ln for ln in text.splitlines() if IGNORE not in ln)
-        for path in re.findall(r"`((?:src|templates|chat|pets|diary|accounts|webapp|docker|configs|eval|scripts)/[\w./\-]+\.\w+)`", body):
+        for path in re.findall(PATH_RE, body):
             if not (ROOT / path).exists():
                 missing.add(f"{name}: `{path}` 가 없다")
     err.extend(sorted(missing))
@@ -200,8 +224,6 @@ def main() -> int:
         n = real_test_count()
         if n:
             print(f"  · pytest 수집 — {n}건")
-            for name, text in docs.items():
-                claim(name, text, r"\*{0,2}(\d{3})\*{0,2}\s*(?:passed|건)?\s*(?:passed)?", "", n) if False else None
             # 수는 자리가 많아 오탐이 크다. `13 §2` 의 표만 본다.
             t13 = docs.get("13_테스트계획", "")
             m = re.search(r"\|\s*수집·실행\s*\|\s*\*{0,2}(\d+)", t13)
@@ -218,7 +240,7 @@ def main() -> int:
     for e in err:
         print(f"  ✗ {e}")
     if err:
-        print(f"\n어긋남 {len(err)}건. **실물을 먼저 읽고** 어느 쪽을 고칠지 정한다 (CONTRIBUTING).")
+        print(f"\n어긋남 {len(err)}건 — **실물을 먼저 읽고** 고칠 쪽을 정한다.")
         return 1
     print("\n  ✓ 문서가 하는 말이 실물과 같다")
     return 0
