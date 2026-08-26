@@ -38,8 +38,20 @@ log = logging.getLogger(__name__)
 #: 전송량 절감 효과가 준다.
 _NOTE_CHARS_FOR_SUMMARY = 300
 
-#: 직전 체중 대비 이 비율(%) 이상 바뀌면 "급변"으로 본다.
-_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = 10.0
+#: 직전 체중 대비 이 비율(%) 이상 바뀌면 "급변"으로 본다. 종별로 다르다 —
+#: 새는 대사가 빠르고 체중 대비 버틸 여력(지방·근육 비축)이 적어 같은 비율의
+#: 변화가 개·고양이보다 더 급하다. 새는 아픈 티를 늦게 낸다는 것도 이유다
+#: (증상이 보일 땐 이미 진행된 상태인 경우가 많다).
+#:
+#: ⚠️ `compute/tables/`엔 조류 체중 관련 정량 자료가 없다(README "조류 정량
+#: 역치 0행") — 이 숫자는 이 프로젝트의 데이터가 아니라 일반 조류 수의학
+#: 상식을 참고한 값이다. 정확한 기준이 필요하면 수의사 상담을 권한다.
+_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = {
+    "dog": 10.0,
+    "cat": 10.0,
+    "bird": 5.0,
+}
+_DEFAULT_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = 10.0
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -150,7 +162,7 @@ def _summarize_via_inference(
         return "요약 서비스에 연결할 수 없습니다. 기록 원본은 아래에서 확인해 주세요.", "code"
 
 
-def _detect_weight_change(rows: list[dict]) -> dict | None:
+def _detect_weight_change(rows: list[dict], species: str) -> dict | None:
     """가장 최근 두 체중 기록을 비교해 급변 여부를 판정한다.
 
     `diary.html`의 `renderWeightStatus()`는 **절대 범위**(품종·크기별 정상 체중대)를
@@ -168,8 +180,11 @@ def _detect_weight_change(rows: list[dict]) -> dict | None:
     if prev["weight_kg"] <= 0:
         return None
 
+    threshold = _WEIGHT_CHANGE_ALERT_THRESHOLD_PCT.get(
+        species, _DEFAULT_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT
+    )
     change_pct = (latest["weight_kg"] - prev["weight_kg"]) / prev["weight_kg"] * 100
-    if abs(change_pct) < _WEIGHT_CHANGE_ALERT_THRESHOLD_PCT:
+    if abs(change_pct) < threshold:
         return None
 
     direction = "증가" if change_pct > 0 else "감소"
@@ -208,7 +223,7 @@ class ReportView(APIView):
 
         rows = [_row_to_dict(e) for e in entries]
         summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
-        weight_alert = _detect_weight_change(rows)
+        weight_alert = _detect_weight_change(rows, pet.species)
 
         return Response(
             {
