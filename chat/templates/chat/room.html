@@ -1,0 +1,358 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}PetTriage — 위험 체크{% endblock %}
+
+{% block nav_history_active %}{% endblock %}
+{% block nav_room_active %}active{% endblock %}
+{% block eyebrow %}<span class="eyebrow">위험 체크</span>{% endblock %}
+{% block heading %}이거, {{ pet.name }}한테 위험할까요?{% endblock %}
+{% block subheading %}음식, 식물, 생활가전까지 뭐든 물어보세요. 종류를 자동으로 구분해서 알려드릴게요.{% endblock %}
+
+{% block extra_style %}
+  .chat-body{ flex:1; overflow-y:auto; display:flex; justify-content:center; }
+  .chat-log{ width:100%; max-width:760px; padding:28px 36px 12px; display:flex; flex-direction:column; gap:18px; }
+
+  .bubble-row{ display:flex; flex-direction:column; max-width:72%; }
+  .bubble-row.user{ align-self:flex-end; align-items:flex-end; }
+  .bubble-row.bot{ align-self:flex-start; align-items:flex-start; }
+  .bubble{ padding:13px 16px; font-size:14px; line-height:1.65; border-radius:16px; }
+  .bubble-row.user .bubble{ background:var(--honey); color:#3a2a0e; border-bottom-right-radius:4px; }
+  .bubble-row.bot .bubble{ background:var(--moss-soft); color:var(--ink); border:1px solid #d8e3d5; border-bottom-left-radius:4px; }
+
+  .risk-row{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; margin-bottom:8px; }
+  .risk-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .risk-row.safe .risk-dot{ background:var(--moss); }    .risk-row.safe{ color:var(--moss-dark); }
+  .risk-row.caution .risk-dot{ background:var(--amber); } .risk-row.caution{ color:#8a5c10; }
+  .risk-row.danger .risk-dot{ background:var(--clay); }   .risk-row.danger{ color:var(--clay); }
+  .risk-row.info .risk-dot{ background:#8b8578; }         .risk-row.info{ color:#6b6558; }
+
+  .explain{ font-size:13.5px; line-height:1.7; color:var(--ink); margin-bottom:10px; }
+  .amount-box{ display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #d8e3d5;
+    border-radius:11px; padding:9px 12px; margin-bottom:10px; }
+  .amount-box.warn{ border-color:#e7d4b8; }
+  .amount-box .ic{ font-size:16px; }
+  .amount-box .txt{ font-size:12.5px; color:var(--moss-dark); font-weight:600; }
+  .amount-box.warn .txt{ color:#8a5c10; }
+  .source-line{ font-size:11.5px; color:var(--ink-faint); border-top:1px dashed #d8d2c2; padding-top:8px; margin-top:2px; }
+  .audit-line{ font-size:10.5px; color:var(--ink-faint); margin-top:8px; font-variant-numeric:tabular-nums; }
+  .audit-line .gate{ color:#8a5c10; font-weight:700; }
+
+  .bubble-row.bot .bubble.clarify{ border-left:3px solid var(--honey); }
+  .bubble-row.bot .bubble.refused{ border-left:3px solid var(--ink-faint); }
+  .sub-note{ font-size:11px; color:var(--ink-faint); margin-top:6px; }
+
+  .share-cta{ display:none; align-items:center; gap:8px; margin-top:10px;
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 11px 9px 13px; }
+  .share-cta.show{ display:flex; }
+  .share-cta span{ font-size:12px; color:var(--ink-soft); flex:1; }
+  .share-cta button{ background:var(--moss); color:#fff; border:none; border-radius:999px;
+    font-size:11.5px; font-weight:700; padding:7px 12px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+
+  .bottom-area{ display:flex; justify-content:center; flex-shrink:0; background:var(--surface); border-top:1px solid var(--line); }
+  .bottom-inner{ width:100%; max-width:760px; padding:14px 36px 22px; }
+  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; padding-bottom:12px; }
+  .chip{ font-size:12.5px; padding:8px 14px; border-radius:999px; background:var(--bg);
+    border:1px solid var(--line); color:var(--ink-soft); cursor:pointer; font-family:inherit; }
+  .chip:hover{ border-color:var(--moss); color:var(--moss-dark); }
+
+  .chat-input-bar{ display:flex; gap:10px; }
+  .chat-input-bar input{ flex:1; border:1px solid var(--line); background:var(--bg); border-radius:999px;
+    padding:13px 18px; font-size:14px; font-family:inherit; color:var(--ink); outline:none; }
+  .chat-input-bar input:focus{ border-color:var(--moss); }
+  .send-btn{ width:46px; height:46px; border-radius:50%; background:var(--moss); border:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .send-btn svg{ width:18px; height:18px; }
+  .send-btn:active{ transform:scale(.94); }
+  .disclaimer-bar{ margin-top:10px; text-align:center; font-size:10.5px; color:var(--ink-faint); line-height:1.5; }
+
+  .content{ padding:0; }
+  .content-inner{ max-width:none; padding:0; display:flex; flex-direction:column; height:100%; }
+
+  @media (max-width:900px){
+    .chat-log, .bottom-inner{ padding-left:18px; padding-right:18px; }
+    .bubble-row{ max-width:88%; }
+  }
+{% endblock %}
+
+{% block content %}
+<div class="chat-body">
+  <div class="chat-log" id="chatLog"></div>
+</div>
+
+<div class="bottom-area">
+  <div class="bottom-inner">
+    <div class="chip-row" id="chipRow"></div>
+    <div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="예: 강아지가 초콜릿을 먹었어요" />
+      <button class="send-btn" id="sendBtn" aria-label="전송">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12L20 4L14 20L11 13L4 12Z" fill="#fff"/></svg>
+      </button>
+    </div>
+    <div class="disclaimer-bar" id="disclaimerBar"></div>
+  </div>
+</div>
+
+<script>
+/* Django 컨텍스트로 pet 주입 — URL 파라미터/sessionStorage 원본 코드 대체 */
+const currentPet = {
+  petId:   "{{ pet.pet_id|escapejs }}",
+  name:    "{{ pet.name|escapejs }}",
+  species: "{{ pet.species|escapejs }}",
+  breed:   "{{ pet.breed|default:''|escapejs }}",
+  size:    "{{ pet.size|escapejs }}",
+  age:     "{{ pet.age|default:''|escapejs }}",
+  gender:  "{{ pet.gender|default:''|escapejs }}",
+  weight:  "{{ pet.weight_kg|default:''|escapejs }}",
+  notes:   "{{ pet.notes|default:''|escapejs }}",
+};
+
+/* API 호출 — 인증은 nginx 뒤 세션 쿠키로 자동 처리, 별도 헤더 불필요 */
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  if(!r.ok){
+    let detail = '';
+    try{ detail = (await r.json()).detail || ''; } catch(e){}
+    throw new Error(detail || `요청 실패 (${r.status})`);
+  }
+  return r.json();
+}
+
+/* ---------------- Triage 등급 정보 ---------------- */
+let levelMeta = {};
+const levelColor = { 1:'var(--moss)', 2:'var(--amber)', 3:'var(--clay)', 4:'var(--clay)' };
+const levelClass = { 1:'safe', 2:'caution', 3:'danger', 4:'danger' };
+
+async function loadTriageLevels(){
+  try{
+    const data = await api('/api/triage-levels');
+    data.levels.forEach(lv => { levelMeta[lv.level] = lv; });
+    document.getElementById('disclaimerBar').textContent = data.disclaimer;
+  } catch(e){
+    console.error('등급 정보를 불러오지 못했어요', e);
+  }
+}
+
+/* ---------------- 채팅 상태 ---------------- */
+let sessionId = null;
+let pendingQuestion = null;
+let knownWeightKg = currentPet.weight ? parseFloat(currentPet.weight) : null;
+let knownAmountG = null;
+let activeClarify = null;
+
+const chatLog   = document.getElementById("chatLog");
+const chatInput = document.getElementById("chatInput");
+const sendBtn   = document.getElementById("sendBtn");
+const chipRow   = document.getElementById("chipRow");
+const chatBody  = document.querySelector(".chat-body");
+
+const CHIPS_BY_SPECIES = {
+  dog:  ["강아지가 초콜릿을 먹었어요", "강아지가 포도를 먹었어요", "강아지가 볶은양파를 먹었어요"],
+  cat:  ["고양이가 초콜릿을 먹었어요", "고양이가 양파를 먹었어요"],
+  bird: ["앵무새가 아보카도 껍질을 먹었어요"],
+};
+
+(CHIPS_BY_SPECIES[currentPet.species] || CHIPS_BY_SPECIES.dog).forEach(s=>{
+  const chip = document.createElement("button");
+  chip.className = "chip";
+  chip.textContent = s;
+  chip.addEventListener("click", ()=>{ chatInput.value = s; sendMessage(); });
+  chipRow.appendChild(chip);
+});
+
+function scrollToBottom(){ chatBody.scrollTop = chatBody.scrollHeight; }
+
+function addUserBubble(text){
+  const row = document.createElement("div");
+  row.className = "bubble-row user";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  chatLog.appendChild(row);
+  scrollToBottom();
+}
+
+function addLoadingBubble(){
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  row.id = "loadingBubble";
+  row.innerHTML = `<div class="bubble"><span class="risk-row info"><span class="risk-dot"></span>확인하고 있어요…</span></div>`;
+  chatLog.appendChild(row);
+  scrollToBottom();
+}
+function removeLoadingBubble(){
+  const el = document.getElementById("loadingBubble");
+  if(el) el.remove();
+}
+
+function renderAnswered(data){
+  const t = data.triage;
+  const meta = levelMeta[t.level] || { badge: t.badge, message: t.message };
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const riskRow = document.createElement("div");
+  riskRow.className = "risk-row " + (levelClass[t.level] || 'info');
+  riskRow.innerHTML = `<span class="risk-dot" style="background:${levelColor[t.level] || '#8b8578'}"></span>${meta.badge} — ${t.message}`;
+  bubble.appendChild(riskRow);
+
+  const explain = document.createElement("div");
+  explain.className = "explain";
+  explain.textContent = data.answer;
+  bubble.appendChild(explain);
+
+  if(t.escalation_conditions && t.escalation_conditions.length){
+    const box = document.createElement("div");
+    box.className = "amount-box warn";
+    box.innerHTML = `<span class="ic">⚠️</span><span class="txt">이런 증상이 보이면 즉시 알려주세요: ${t.escalation_conditions.join(', ')}</span>`;
+    bubble.appendChild(box);
+  }
+
+  data.citations.forEach(c=>{
+    const src = document.createElement("div");
+    src.className = "source-line";
+    const loc = [c.publisher, c.source_id, c.title].filter(Boolean).join(' · ')
+      + (c.locator ? ` (${c.locator})` : '');
+    src.textContent = c.quote ? `"${c.quote}" — ${loc}` : `출처: ${loc}`;
+    bubble.appendChild(src);
+  });
+
+  const lv = (v)=> v ?? '미호출';
+  const audit = document.createElement("div");
+  audit.className = "audit-line";
+  audit.innerHTML = `규칙 ${lv(t.rule_level)} · LLM ${lv(t.llm_level)} → 최종 ${t.level}`
+    + (t.overridden ? ` <span class="gate">· 게이트가 LLM의 하향을 차단했어요</span>` : '');
+  bubble.appendChild(audit);
+
+  row.appendChild(bubble);
+  chatLog.appendChild(row);
+  scrollToBottom();
+}
+
+const missingKorean = { species:'종', substance:'물질', weight_kg:'체중', amount_g:'먹은 양', pet_id:'반려동물 정보', substance_detail:'물질 종류' };
+function renderClarify(data){
+  activeClarify = data.clarify;
+  const missingList = (data.clarify.missing || []).map(m => missingKorean[m] || m).join(', ');
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  row.innerHTML = `
+    <div class="bubble clarify">
+      <div class="risk-row info"><span class="risk-dot" style="background:var(--honey)"></span>조금만 더 알려주세요 (${data.clarify.turn}/${data.clarify.max_turns})</div>
+      <div class="explain">${data.clarify.question}</div>
+      ${missingList ? `<div class="sub-note">부족한 정보: ${missingList}</div>` : ''}
+    </div>`;
+  chatLog.appendChild(row);
+  scrollToBottom();
+}
+
+function renderRefused(data){
+  activeClarify = null;
+  pendingQuestion = null;
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  row.innerHTML = `
+    <div class="bubble refused">
+      <div class="risk-row info"><span class="risk-dot"></span>답변을 드리기 어려워요</div>
+      <div class="explain">${data.refusal.message}</div>
+      <div class="explain" style="margin-bottom:0">${data.refusal.advice}</div>
+      <div class="sub-note">사유: ${data.refusal.reason}</div>
+    </div>`;
+  chatLog.appendChild(row);
+  scrollToBottom();
+}
+
+async function askHazard(questionText){
+  addLoadingBubble();
+  try{
+    const data = await api('/api/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        question: questionText,
+        species: currentPet.species || null,
+        pet_id: currentPet.petId || null,
+        weight_kg: knownWeightKg,
+        amount_g: knownAmountG,
+        session_id: sessionId,
+      }),
+    });
+    removeLoadingBubble();
+    sessionId = data.session_id;
+
+    if(data.status === 'answered'){
+      activeClarify = null;
+      pendingQuestion = null;
+      renderAnswered(data);
+    } else if(data.status === 'clarify'){
+      renderClarify(data);
+    } else {
+      renderRefused(data);
+    }
+  } catch(e){
+    removeLoadingBubble();
+    const row = document.createElement("div");
+    row.className = "bubble-row bot";
+    row.innerHTML = `<div class="bubble"><div class="explain">요청을 처리하지 못했어요 — ${e.message}</div></div>`;
+    chatLog.appendChild(row);
+    scrollToBottom();
+  }
+}
+
+function absorbClarifyReply(text){
+  if(!activeClarify) return;
+  const numbers = text.match(/[\d.]+/g) || [];
+  const missing = activeClarify.missing || [];
+  let idx = 0;
+  if(missing.includes('weight_kg') && numbers[idx] !== undefined){
+    knownWeightKg = parseFloat(numbers[idx]); idx++;
+  }
+  if(missing.includes('amount_g') && numbers[idx] !== undefined){
+    knownAmountG = parseFloat(numbers[idx]); idx++;
+  }
+  if(missing.includes('species') && !currentPet.species){
+    if(text.includes('강아지') || text.includes('개')) currentPet.species = 'dog';
+    else if(text.includes('고양이')) currentPet.species = 'cat';
+    else if(text.includes('앵무') || text.includes('새')) currentPet.species = 'bird';
+  }
+  if(missing.includes('substance_detail')){
+    pendingQuestion = text.trim() + ' ' + pendingQuestion;
+  }
+}
+
+function normalizeQuestion(text){
+  const amountMatch = text.match(/([\d.]+)\s*(g|그램)/i);
+  if(amountMatch){ knownAmountG = parseFloat(amountMatch[1]); }
+  const weightMatch = text.match(/([\d.]+)\s*(kg|키로|킬로)/i);
+  if(weightMatch){ knownWeightKg = parseFloat(weightMatch[1]); }
+}
+
+function sendMessage(){
+  const text = chatInput.value.trim();
+  if(!text) return;
+  addUserBubble(text);
+  chatInput.value = "";
+  if(activeClarify){
+    absorbClarifyReply(text);
+    askHazard(pendingQuestion);
+  } else {
+    normalizeQuestion(text);
+    pendingQuestion = text;
+    askHazard(text);
+  }
+}
+sendBtn.addEventListener("click", sendMessage);
+chatInput.addEventListener("keydown", e=>{ if(e.key==="Enter") sendMessage(); });
+
+loadTriageLevels();
+
+/* 첫 인사 */
+(function(){
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  row.innerHTML = `<div class="bubble">안녕하세요! 음식, 식물, 생활가전까지 뭐든 물어보세요. ${currentPet.name}한테 위험한지, 왜 위험한지, 어떻게 하면 좋을지 알려드릴게요 🐾</div>`;
+  chatLog.appendChild(row);
+})();
+</script>
+{% endblock %}

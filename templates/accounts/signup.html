@@ -1,0 +1,235 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PetTriage — 회원가입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --ink: #2C2A26;
+    --ink-soft: #6B6558;
+    --ink-faint: #A39C8C;
+    --moss: #4F6B4A;
+    --moss-dark: #3A4F37;
+    --moss-soft: #E4EBE1;
+    --honey: #D89B3D;
+    --clay: #B3542F;
+    --line: #E5DFD2;
+    --danger-soft: #F6E4DB;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh;
+    background: var(--surface);
+    color: var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+  }
+  .stage{
+    width:100%; min-height:100vh;
+    display:grid; grid-template-columns: 1fr 1fr;
+  }
+
+  /* -------- 왼쪽 브랜드 패널 -------- */
+  .side{
+    background: var(--moss-dark);
+    color:#fff;
+    padding: 40px 36px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position:relative; overflow:hidden; height:100vh;
+  }
+  .side::before{
+    content:""; position:absolute; right:-60px; bottom:-60px;
+    width:220px; height:220px; border-radius:50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .side::after{
+    content:""; position:absolute; left:-40px; top:-40px;
+    width:140px; height:140px; border-radius:50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .side-top{ position:relative; z-index:1; }
+  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:50px; }
+  .logo-mark{ width:34px; height:34px; border-radius:10px; background: rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; }
+  .logo-mark svg{ width:18px; height:18px; }
+  .logo-text{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:17px; }
+
+  .side h2{ font-family:'Noto Serif KR', serif; font-size:25px; line-height:1.4; font-weight:700; margin:0 0 14px; }
+  .side p{ font-size:13.5px; line-height:1.7; color: rgba(255,255,255,0.75); max-width:280px; }
+
+  .steps{ position:relative; z-index:1; display:flex; flex-direction:column; gap:16px; margin-top:30px; }
+  .step{ display:flex; align-items:center; gap:10px; font-size:12.5px; color: rgba(255,255,255,0.55); }
+  .step-dot{ width:22px; height:22px; border-radius:50%; background: rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+  .step.active{ color:#fff; font-weight:700; }
+  .step.active .step-dot{ background:#fff; color: var(--moss-dark); }
+
+  /* -------- 오른쪽 폼 패널 -------- */
+  .form-side{ padding: 60px 40px; overflow-y:auto; height:100vh; }
+  .form-inner{ width:100%; max-width:420px; margin:0 auto; }
+  .form-head{ margin-bottom: 26px; }
+  .form-head .eyebrow{
+    font-size:11.5px; font-weight:700; color: var(--moss-dark);
+    background: var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:12px;
+  }
+  .form-head h1{ font-family:'Noto Serif KR', serif; font-size:22px; font-weight:700; margin:0 0 6px; }
+  .form-head p{ font-size:13px; color: var(--ink-soft); margin:0; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--ink-soft); margin-bottom:6px; }
+  .input-row{ display:flex; gap:8px; }
+  .field input{
+    width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    font-size:13.5px; font-family:inherit; background: var(--bg); color: var(--ink); outline:none;
+  }
+  .field input:focus{ border-color: var(--moss); background:#fff; }
+  .field .hint{ font-size:11.5px; color: var(--ink-faint); margin-top:5px; }
+  .field .hint.ok{ color: var(--moss-dark); }
+  .field .hint.err{ color: var(--clay); }
+
+  .btn-check{
+    flex-shrink:0; padding:0 14px; border-radius:12px; border:1px solid var(--line);
+    background: var(--surface); color: var(--ink-soft); font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+  }
+  .btn-check:hover{ border-color: var(--moss); color: var(--moss-dark); }
+
+  .btn-primary{
+    width:100%; background: var(--moss); color:#fff; border:none; border-radius:999px;
+    padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    margin-top: 6px;
+  }
+  .btn-primary:hover{ background: var(--moss-dark); }
+
+  .form-foot{ margin-top:18px; text-align:center; font-size:12.5px; color: var(--ink-soft); }
+  .form-foot a{ color: var(--moss-dark); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+
+  .error-box{
+    background: var(--danger-soft); color:#7a3216; border:1px solid #e5c2ac;
+    font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:14px;
+  }
+
+  @media (max-width: 720px){
+    .stage{ grid-template-columns:1fr; }
+    .side{ display:none; }
+    .form-side{ padding: 34px 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="side">
+    <div class="side-top">
+      <div class="logo">
+        <span class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
+        </span>
+        <span class="logo-text">PetTriage</span>
+      </div>
+      <h2>우리 아이 안전,<br>여기서 시작해요</h2>
+      <p>계정을 만들면 반려동물 프로필을 등록하고 맞춤 위험도를 확인할 수 있어요.</p>
+
+      <div class="steps">
+        <div class="step active"><span class="step-dot">1</span>회원가입</div>
+        <div class="step"><span class="step-dot">2</span>프로필 생성</div>
+        <div class="step"><span class="step-dot">3</span>한입 나누기 시작</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-side">
+    <div class="form-inner">
+      <div class="form-head">
+        <span class="eyebrow">GET STARTED</span>
+        <h1>회원가입</h1>
+        <p>아이디와 비밀번호를 만들어주세요.</p>
+      </div>
+
+      {% if error %}
+        <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="field">
+          <label for="username">아이디</label>
+          <div class="input-row">
+            <input type="text" id="username" name="username" placeholder="영문/숫자 4~16자" required autofocus>
+            <button type="button" class="btn-check" id="checkIdBtn">중복확인</button>
+          </div>
+          <div class="hint" id="idHint">사용 가능한지 확인해주세요.</div>
+        </div>
+
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" placeholder="8자 이상" required>
+        </div>
+
+        <div class="field">
+          <label for="password2">비밀번호 확인</label>
+          <input type="password" id="password2" name="password2" placeholder="비밀번호 다시 입력" required>
+          <div class="hint" id="pwHint"></div>
+        </div>
+
+        <button type="submit" class="btn-primary">회원가입</button>
+      </form>
+
+      <div class="form-foot">
+        이미 계정이 있으신가요? <a href="{% url 'accounts:login' %}">로그인</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---- 아이디 중복확인 (서버에 물어본다) ---- */
+const usernameInput = document.getElementById('username');
+const idHint = document.getElementById('idHint');
+
+document.getElementById('checkIdBtn').addEventListener('click', async ()=>{
+  const value = usernameInput.value.trim();
+  const url = "{% url 'accounts:check_id' %}?username=" + encodeURIComponent(value);
+  try{
+    const res = await fetch(url);
+    const data = await res.json();
+    idHint.textContent = data.msg;
+    idHint.className = 'hint ' + (data.ok ? 'ok' : 'err');
+  }catch(e){
+    idHint.textContent = '확인에 실패했어요. 잠시 후 다시 시도해주세요.';
+    idHint.className = 'hint err';
+  }
+});
+
+usernameInput.addEventListener('input', ()=>{
+  idHint.textContent = '사용 가능한지 확인해주세요.';
+  idHint.className = 'hint';
+});
+
+/* ---- 비밀번호 일치 확인 (화면에서만 미리 알려준다) ---- */
+const pw = document.getElementById('password');
+const pw2 = document.getElementById('password2');
+const pwHint = document.getElementById('pwHint');
+
+function checkPwMatch(){
+  if(pw2.value.length === 0){ pwHint.textContent = ''; return; }
+  if(pw.value.length < 8){
+    pwHint.textContent = '비밀번호는 8자 이상이어야 해요.';
+    pwHint.className = 'hint err';
+  } else if(pw.value === pw2.value){
+    pwHint.textContent = '비밀번호가 일치해요.';
+    pwHint.className = 'hint ok';
+  } else {
+    pwHint.textContent = '비밀번호가 일치하지 않아요.';
+    pwHint.className = 'hint err';
+  }
+}
+pw.addEventListener('input', checkPwMatch);
+pw2.addEventListener('input', checkPwMatch);
+</script>
+</body>
+</html>

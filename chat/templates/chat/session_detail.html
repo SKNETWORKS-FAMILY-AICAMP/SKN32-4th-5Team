@@ -1,0 +1,53 @@
+{% extends 'chat/base.html' %}
+{% block title %}PetTriage — 대화 상세{% endblock %}
+
+{% block eyebrow %}<span class="eyebrow">대화 상세</span>{% endblock %}
+{% block heading %}{{ session.created_at|date:"Y년 n월 j일 H:i" }} 상담{% endblock %}
+{% block subheading %}당시 나눈 대화를 순서대로 확인할 수 있어요.{% endblock %}
+
+{% block extra_style %}
+  .back{
+    display:inline-flex; align-items:center; gap:6px;
+    color:var(--ink-soft); font-size:13px; text-decoration:none;
+    margin-bottom:18px;
+  }
+  .back:hover{ color:var(--moss-dark); }
+  .bubble-row{ display:flex; flex-direction:column; max-width:78%; margin-bottom:16px; }
+  .bubble-row.user{ align-self:flex-end; align-items:flex-end; margin-left:auto; }
+  .bubble-row.assistant{ align-self:flex-start; align-items:flex-start; }
+  .role{
+    font-size:11px; color:var(--ink-faint); margin-bottom:6px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .bubble{
+    padding:13px 16px; font-size:14px; line-height:1.7; border-radius:16px;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .bubble-row.user .bubble{
+    background:var(--honey); color:#3a2a0e; border-bottom-right-radius:4px;
+  }
+  .bubble-row.assistant .bubble{
+    background:var(--moss-soft); color:var(--ink);
+    border:1px solid #d8e3d5; border-bottom-left-radius:4px;
+  }
+  .stream{ display:flex; flex-direction:column; }
+{% endblock %}
+
+{% block content %}
+  <a class="back" href="{% url 'chat:session_list' %}">← 목록으로</a>
+  <div class="stream">
+    {% for m in messages %}
+      <div class="bubble-row {{ m.role }}">
+        <div class="role">
+          {% if m.role == 'user' %}보호자{% else %}AI 상담{% endif %}
+          {% if m.triage_badge %}
+            <span class="badge {{ m.triage_css }}">
+              <span class="dot"></span>{{ m.triage_badge }}
+            </span>
+          {% endif %}
+        </div>
+        <div class="bubble">{{ m.content }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}PetTriage — 채팅 내역{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF6EF; --surface:#FFFFFF;
+    --ink:#2C2A26; --ink-soft:#6B6558; --ink-faint:#A39C8C;
+    --moss:#4F6B4A; --moss-dark:#3A4F37; --moss-soft:#E4EBE1;
+    --honey:#D89B3D; --honey-soft:#FBEEDA;
+    --clay:#B3542F; --clay-soft:#F6E4DB;
+    --amber:#C98A1E; --amber-soft:#FBF0D9;
+    --line:#E5DFD2;
+    --sidebar-w:268px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif; display:flex;
+  }
+
+  /* ============ 사이드바 ============ */
+  .sidebar{
+    width:var(--sidebar-w); flex-shrink:0;
+    background:var(--moss-dark); color:#fff;
+    display:flex; flex-direction:column;
+    height:100vh; position:sticky; top:0;
+  }
+  .sidebar-top{ padding:22px 18px 16px; border-bottom:1px solid rgba(255,255,255,0.14); }
+  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:20px; }
+  .logo-mark{
+    width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,0.14);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .logo-mark svg{ width:17px; height:17px; }
+  .logo-text{ font-family:'Noto Serif KR',serif; font-weight:700; font-size:16px; }
+
+  .sidebar-profile{ display:flex; align-items:flex-start; gap:11px; }
+  .sidebar-profile .av{
+    width:44px; height:44px; border-radius:50%; background:var(--honey);
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    flex-shrink:0; overflow:hidden;
+  }
+  .sidebar-profile .av img{ width:100%; height:100%; object-fit:cover; }
+  .sidebar-profile .nm{ font-weight:700; font-size:14px; }
+  .sidebar-profile .meta{ font-size:11px; color:rgba(255,255,255,0.65); margin-top:3px; line-height:1.55; }
+
+  .sidebar-list{ padding:12px 10px; display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
+  .sidebar-section-label{
+    font-size:10.5px; color:rgba(255,255,255,0.42); font-weight:700;
+    padding:14px 12px 4px; letter-spacing:.4px;
+  }
+  .sidebar-item{
+    display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px;
+    font-size:13px; color:rgba(255,255,255,0.82); cursor:pointer; background:none; border:none;
+    font-family:inherit; text-align:left; width:100%; text-decoration:none;
+  }
+  .sidebar-item:hover{ background:rgba(255,255,255,0.08); color:#fff; }
+  .sidebar-item.active{ background:rgba(255,255,255,0.14); color:#fff; font-weight:700; }
+  .sidebar-item .ic{ width:17px; text-align:center; opacity:.9; font-size:14px; }
+
+  .sidebar-foot{ padding:14px 18px 18px; border-top:1px solid rgba(255,255,255,0.14); }
+  .sidebar-foot button{
+    width:100%; background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:999px;
+    padding:9px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .sidebar-foot button:hover{ background:rgba(255,255,255,0.18); }
+
+  .overlay{ display:none; }
+
+  /* ============ 메인 영역 ============ */
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 36px; border-bottom:1px solid var(--line); flex-shrink:0;
+    background:var(--surface);
+  }
+  .menu-btn{ display:none; }
+  .topbar-left{ display:flex; align-items:center; }
+  .topbar-copy .eyebrow{
+    font-size:11px; font-weight:700; color:var(--moss-dark);
+    background:var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:8px;
+  }
+  .topbar-copy h1{ font-family:'Noto Serif KR',serif; font-size:20px; font-weight:700; margin:0 0 4px; }
+  .topbar-copy p{ font-size:12.5px; color:var(--ink-soft); margin:0; }
+
+  .content{ flex:1; overflow-y:auto; display:flex; justify-content:center; }
+  .content-inner{ width:100%; max-width:760px; padding:28px 36px 40px; }
+
+  /* ============ Triage 뱃지 (공통) ============ */
+  .badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+    padding:3px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .badge .dot{ width:7px; height:7px; border-radius:50%; }
+  .badge.monitor{ color:var(--moss-dark); background:var(--moss-soft); }
+  .badge.monitor .dot{ background:var(--moss); }
+  .badge.visit{ color:#8a5c10; background:var(--amber-soft); }
+  .badge.visit .dot{ background:var(--amber); }
+  .badge.call{ color:var(--clay); background:var(--clay-soft); }
+  .badge.call .dot{ background:var(--clay); }
+  .badge.emergency{ color:#fff; background:var(--clay); }
+  .badge.emergency .dot{ background:#fff; }
+
+  /* ============ 좁은 화면 ============ */
+  @media (max-width:900px){
+    .sidebar{
+      position:fixed; left:0; top:0; bottom:0; z-index:30;
+      transform:translateX(-100%); transition:transform .26s ease;
+      box-shadow:20px 0 40px rgba(0,0,0,0.18);
+    }
+    .sidebar.open{ transform:translateX(0); }
+    .overlay{
+      display:block; position:fixed; inset:0; background:rgba(44,42,38,0.35);
+      opacity:0; pointer-events:none; transition:.22s ease; z-index:29;
+    }
+    .overlay.open{ opacity:1; pointer-events:auto; }
+    .menu-btn{
+      display:flex; width:38px; height:38px; border-radius:12px; border:1px solid var(--line);
+      background:var(--surface); align-items:center; justify-content:center; cursor:pointer;
+      flex-shrink:0; margin-right:12px;
+    }
+    .menu-btn svg{ width:18px; height:18px; }
+    .topbar{ padding:16px 18px; }
+    .content-inner{ padding:20px 18px 32px; }
+  }
+
+  {% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <span class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
+      </span>
+      <span class="logo-text">PetTriage</span>
+    </div>
+    {% if active_pet %}
+      <div class="sidebar-profile">
+        <div class="av">
+          {% if active_pet.photo %}
+            <img src="{{ active_pet.photo.url }}" alt="{{ active_pet.name }}">
+          {% else %}
+            {{ active_pet_emoji }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="nm">{{ active_pet.name }}</div>
+          <div class="meta">{{ active_pet_meta }}</div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="sidebar-list">
+    <div class="sidebar-section-label">메뉴</div>
+    <a class="sidebar-item {% block nav_room_active %}{% endblock %}"
+       href="{% url 'chat:room' %}"><span class="ic">🔍</span>위험 체크</a>
+    <a class="sidebar-item {% block nav_history_active %}active{% endblock %}"
+       href="{% url 'chat:session_list' %}"><span class="ic">💬</span>채팅 내역</a>
+    <a class="sidebar-item {% block nav_diary_active %}{% endblock %}"
+       href="{% url 'diary-page' %}"><span class="ic">📖</span>기록장</a>
+
+    <div class="sidebar-section-label">관리</div>
+    <a class="sidebar-item {% block nav_pets_active %}{% endblock %}"
+       href="{% url 'pets:list' %}"><span class="ic">🐾</span>반려동물</a>
+  </div>
+
+  <div class="sidebar-foot">
+    <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
+      {% csrf_token %}
+      <button type="submit">로그아웃</button>
+    </form>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="menu-btn" id="menuBtn" aria-label="메뉴 열기">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H20" stroke="#2C2A26" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="topbar-copy">
+        {% block eyebrow %}<span class="eyebrow">채팅 내역</span>{% endblock %}
+        <h1>{% block heading %}지난 대화 모아보기{% endblock %}</h1>
+        <p>{% block subheading %}그동안 나눈 상담을 등급별로 다시 확인할 수 있어요.{% endblock %}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="content-inner">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  document.getElementById('menuBtn').addEventListener('click', ()=>{
+    sidebar.classList.add('open'); overlay.classList.add('open');
+  });
+  overlay.addEventListener('click', ()=>{
+    sidebar.classList.remove('open'); overlay.classList.remove('open');
+  });
+</script>
+</body>
+</html>

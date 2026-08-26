@@ -1,0 +1,393 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ko" xmlns="http://www.w3.org/1999/html">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PetTriage — {% if pet %}프로필 설정{% else %}프로필 생성{% endif %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --ink: #2C2A26;
+    --ink-soft: #6B6558;
+    --ink-faint: #A39C8C;
+    --moss: #4F6B4A;
+    --moss-dark: #3A4F37;
+    --moss-soft: #E4EBE1;
+    --honey: #D89B3D;
+    --honey-soft: #FBEEDA;
+    --clay: #B3542F;
+    --line: #E5DFD2;
+    --danger-soft: #F6E4DB;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh;
+    background: var(--surface);
+    color: var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+  }
+  .stage{
+    width:100%; min-height:100vh;
+    display:grid; grid-template-columns: 0.85fr 1.15fr;
+  }
+
+  /* -------- 왼쪽 패널 -------- */
+  .side{
+    background: var(--moss-dark); color:#fff;
+    padding: 40px 34px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position:relative; overflow:hidden; height:100vh;
+  }
+  .side::before{ content:""; position:absolute; right:-60px; bottom:-60px; width:220px; height:220px; border-radius:50%; background: rgba(255,255,255,0.06); }
+  .side-top{ position:relative; z-index:1; }
+  .logo{ display:flex; align-items:center; gap:9px; margin-bottom:44px; }
+  .logo-mark{ width:34px; height:34px; border-radius:10px; background: rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; }
+  .logo-mark svg{ width:18px; height:18px; }
+  .logo-text{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:16px; }
+
+  .side h2{ font-family:'Noto Serif KR', serif; font-size:22px; line-height:1.4; font-weight:700; margin:0 0 10px; }
+  .side p{ font-size:13px; line-height:1.7; color: rgba(255,255,255,0.7); max-width:260px; }
+
+  .steps{ position:relative; z-index:1; display:flex; flex-direction:column; gap:16px; margin-top:30px; }
+  .step{ display:flex; align-items:center; gap:10px; font-size:12.5px; color: rgba(255,255,255,0.55); }
+  .step-dot{ width:22px; height:22px; border-radius:50%; background: rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+  .step.done{ color: rgba(255,255,255,0.9); }
+  .step.done .step-dot{ background: var(--honey); color:#3a2a0e; }
+  .step.active{ color:#fff; font-weight:700; }
+  .step.active .step-dot{ background:#fff; color: var(--moss-dark); }
+
+  .side-back{
+    position:relative; z-index:1; font-size:12.5px; color: rgba(255,255,255,0.75);
+    text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+  }
+  .side-back:hover{ color:#fff; }
+
+  /* -------- 오른쪽 폼 -------- */
+  .form-side{ padding: 48px 44px; overflow-y:auto; height:100vh; }
+  .form-inner{ width:100%; max-width:520px; margin:0 auto; }
+  .form-head{ margin-bottom:22px; }
+  .form-head .eyebrow{
+    font-size:11.5px; font-weight:700; color: var(--moss-dark);
+    background: var(--moss-soft); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:10px;
+  }
+  .form-head h1{ font-family:'Noto Serif KR', serif; font-size:21px; font-weight:700; margin:0 0 6px; }
+  .form-head p{ font-size:13px; color: var(--ink-soft); margin:0; }
+
+  .error-box{
+    background: var(--danger-soft); color:#7a3216; border:1px solid #e5c2ac;
+    font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:16px;
+  }
+
+  /* 사진 업로드 */
+  .photo-row{ display:flex; align-items:center; gap:16px; margin-bottom:22px; }
+  .photo-circle{
+    width:78px; height:78px; border-radius:50%; background: var(--moss-soft);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;
+    border: 2px dashed #c9d6c6; cursor:pointer;
+  }
+  .photo-circle img{ width:100%; height:100%; object-fit:cover; display:none; }
+  .photo-circle svg{ width:26px; height:26px; opacity:.55; }
+  .photo-meta{ font-size:12.5px; color: var(--ink-soft); line-height:1.6; }
+  .photo-meta b{ color: var(--ink); }
+  .photo-btn{
+    display:inline-block; margin-top:4px; font-size:12px; font-weight:700; color: var(--moss-dark);
+    background: var(--moss-soft); padding:5px 11px; border-radius:999px; cursor:pointer;
+  }
+  #photoInput{ display:none; }
+
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--ink-soft); margin-bottom:7px; }
+  .field input, .field textarea{
+    width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    font-size:13.5px; font-family:inherit; background: var(--bg); color: var(--ink); outline:none;
+  }
+  .field input:focus, .field textarea:focus{ border-color: var(--moss); background:#fff; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  /* 품종 선택 카드 */
+  .option-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+  .option-card{
+    border:1.5px solid var(--line); border-radius:14px; padding:12px 8px;
+    text-align:center; cursor:pointer; background: var(--bg); transition:.15s;
+  }
+  .option-card .emoji{ font-size:22px; display:block; margin-bottom:6px; }
+  .option-card .label{ font-size:12.5px; font-weight:600; color: var(--ink-soft); }
+  .option-card.selected{ border-color: var(--moss); background: var(--moss-soft); }
+  .option-card.selected .label{ color: var(--moss-dark); }
+
+  /* 크기 선택 pill */
+  .size-row{ display:flex; gap:8px; }
+  .size-pill{
+    flex:1; text-align:center; border:1.5px solid var(--line); border-radius:12px; padding:10px 6px;
+    cursor:pointer; background: var(--bg); font-size:12.5px; font-weight:600; color: var(--ink-soft);
+  }
+  .size-pill small{ display:block; font-weight:400; color: var(--ink-faint); font-size:10.5px; margin-top:2px; }
+  .size-pill.selected{ border-color: var(--honey); background: var(--honey-soft); color:#7a4d10; }
+
+  .btn-primary{
+    width:100%; background: var(--moss); color:#fff; border:none; border-radius:999px;
+    padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    margin-top: 8px;
+  }
+  .btn-primary:hover{ background: var(--moss-dark); }
+
+  .btn-secondary{
+    width:100%; background: var(--surface); color: var(--moss-dark); border:1.5px solid var(--moss);
+    border-radius:999px; padding:11px 20px; font-size:13.5px; font-weight:700; cursor:pointer;
+    font-family:inherit; margin-top:9px;
+  }
+  .btn-secondary:hover{ background: var(--moss-soft); }
+
+  .danger-zone{ margin-top:28px; padding-top:20px; border-top:1px solid var(--line); }
+  .danger-zone .dz-label{ font-size:11.5px; font-weight:700; color: var(--ink-faint); margin-bottom:8px; }
+  .btn-danger{
+    background: transparent; color: var(--clay); border:1px solid #e5c2ac;
+    border-radius:999px; padding:9px 18px; font-size:12.5px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn-danger:hover{ background: var(--danger-soft); }
+
+  @media (max-width: 760px){
+    .stage{ grid-template-columns:1fr; }
+    .side{ display:none; }
+    .form-side{ padding: 30px 24px; }
+  }
+  .remove-photo{
+    display:inline-block; margin-top:8px; margin-left:6px;
+    background:transparent; border:1px solid var(--line); border-radius:999px;
+    padding:5px 11px; font-size:11.5px; font-weight:700; color: var(--ink-faint);
+    cursor:pointer; font-family:inherit;
+  }
+  .remove-photo:hover{ border-color:#e5c2ac; color: var(--clay); }
+  .remove-photo input{ width:auto; margin:0; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="side">
+    <div class="side-top">
+      <div class="logo">
+        <span class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 14c-3.5 0-6.5 2.2-6.5 5.2 0 1 .8 1.8 1.8 1.8h9.4c1 0 1.8-.8 1.8-1.8 0-3-3-5.2-6.5-5.2Z" fill="#fff"/><circle cx="6" cy="8" r="2.3" fill="#fff"/><circle cx="18" cy="8" r="2.3" fill="#fff"/><circle cx="9.3" cy="4.6" r="2" fill="#fff"/><circle cx="14.7" cy="4.6" r="2" fill="#fff"/></svg>
+        </span>
+        <span class="logo-text">PetTriage</span>
+      </div>
+
+      {% if pet %}
+        <h2>{{ pet.name }}의<br>프로필 설정</h2>
+        <p>바뀐 정보를 반영하면 위험도 안내도 함께 정확해져요. 체중이 달라졌다면 꼭 갱신해주세요.</p>
+      {% else %}
+        <h2>이제부터 같이<br>나눠 먹을 준비</h2>
+        <p>프로필을 만들면 우리 아이 기준으로 어떤 음식을 한입 나눠줘도 되는지 알려드려요.</p>
+
+        <div class="steps">
+          <div class="step done"><span class="step-dot">✓</span>회원가입</div>
+          <div class="step active"><span class="step-dot">2</span>프로필 생성</div>
+          <div class="step"><span class="step-dot">3</span>한입 나누기 시작</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <a class="side-back" href="{% url 'pets:list' %}">← 내 반려동물 목록</a>
+  </div>
+
+  <div class="form-side">
+    <div class="form-inner">
+      <div class="form-head">
+        {% if pet %}
+          <span class="eyebrow">PET SETTINGS</span>
+          <h1>프로필 수정</h1>
+          <p>바꾸고 싶은 항목만 고쳐주세요.</p>
+        {% else %}
+          <span class="eyebrow">STEP 2 · PET PROFILE</span>
+          <h1>반려동물 프로필</h1>
+          <p>사진, 이름, 품종, 크기를 알려주시면 우리 아이가 나눠 먹어도 되는 음식을 정확히 안내해드려요.</p>
+        {% endif %}
+      </div>
+
+      {% if error %}
+        <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" id="petForm">
+        {% csrf_token %}
+
+        <!-- 사진 업로드 -->
+        <div class="photo-row">
+          <label class="photo-circle" id="photoCircle">
+            <svg viewBox="0 0 24 24" fill="none" {% if pet.photo %}style="display:none;"{% endif %}><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="#4F6B4A" stroke-width="1.6"/><circle cx="12" cy="13" r="3.4" stroke="#4F6B4A" stroke-width="1.6"/></svg>
+            <img id="photoPreview" alt="" {% if pet.photo %}src="{{ pet.photo.url }}" style="display:block;"{% endif %}>
+          </label>
+          <div class="photo-meta">
+            <div><b>프로필 사진</b>{% if pet.photo %}을 바꿀 수 있어요.{% else %}을 등록해주세요.{% endif %}</div>
+            <span class="photo-btn" id="photoBtnLabel">{% if pet.photo %}사진 변경{% else %}사진 선택{% endif %}</span>
+            {% if pet.photo %}
+              <button type="button" class="remove-photo" id="removePhotoBtn">사진 삭제</button>
+            {% endif %}
+          </div>
+          <input type="file" id="photoInput" name="photo" accept="image/*">
+        </div>
+
+        <div class="field">
+          <label for="name">이름</label>
+          <input type="text" id="name" name="name" placeholder="예: 콩이" value="{{ pet.name|default:'' }}" required>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="age">나이</label>
+            <input type="text" id="age" name="age" placeholder="예: 2살" value="{{ pet.age|default:'' }}">
+          </div>
+          <div class="field">
+            <label for="gender">성별</label>
+            <input type="text" id="gender" name="gender" placeholder="예: 수컷 / 암컷" value="{{ pet.gender|default:'' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="weight_kg">체중</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="number" step="0.1" id="weight_kg" name="weight_kg" placeholder="예: 4.2"
+                   value="{{ pet.weight_kg|default_if_none:'' }}" style="max-width:140px;">
+            <span style="font-size:12.5px; color: var(--ink-soft);">kg</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="intro">한 줄 소개</label>
+          <textarea id="intro" name="intro" rows="2" placeholder="우리 아이를 소개해주세요">{{ pet.intro|default:'' }}</textarea>
+        </div>
+
+        <div class="field">
+          <label for="notes">특이사항 <span style="font-weight:400; color: var(--ink-faint);">(알러지, 질환이 있는 경우 작성)</span></label>
+          <textarea id="notes" name="notes" rows="2" placeholder="예: 닭고기 알러지, 슬개골 탈구 이력 있음">{{ pet.notes|default:'' }}</textarea>
+        </div>
+
+        <div class="field">
+          <label>품종</label>
+          <div class="option-grid" id="speciesGrid">
+            <div class="option-card {% if pet.species == 'dog' %}selected{% endif %}" data-value="dog"><span class="emoji">🐶</span><span class="label">개</span></div>
+            <div class="option-card {% if pet.species == 'cat' %}selected{% endif %}" data-value="cat"><span class="emoji">🐱</span><span class="label">고양이</span></div>
+            <div class="option-card {% if pet.species == 'bird' %}selected{% endif %}" data-value="bird"><span class="emoji">🦜</span><span class="label">앵무새</span></div>
+          </div>
+          <input type="hidden" name="species" id="speciesInput" value="{{ pet.species|default:'' }}">
+        </div>
+
+        <div class="field">
+          <label>크기</label>
+          <div class="size-row" id="sizeRow">
+            <div class="size-pill {% if pet.size == 'small' %}selected{% endif %}" data-value="small">소형<small>~5kg</small></div>
+            <div class="size-pill {% if pet.size == 'medium' %}selected{% endif %}" data-value="medium">중형<small>5~15kg</small></div>
+            <div class="size-pill {% if pet.size == 'large' %}selected{% endif %}" data-value="large">대형<small>15kg~</small></div>
+          </div>
+          <input type="hidden" name="size" id="sizeInput" value="{{ pet.size|default:'' }}">
+        </div>
+
+        {% if pet %}
+          <button type="submit" class="btn-primary">저장하기</button>
+        {% else %}
+          <input type="hidden" name="action" id="actionInput" value="done">
+          <button type="submit" class="btn-primary" id="saveBtn">프로필 저장하고 한입 나누러 가기</button>
+          <button type="submit" class="btn-secondary" id="addAnotherBtn">저장하고 추가 프로필 만들기</button>
+        {% endif %}
+      </form>
+
+      {% if pet %}
+        <div class="danger-zone">
+          <div class="dz-label">프로필 삭제</div>
+          <form method="post" action="{% url 'pets:delete' pet.pet_id %}"
+                onsubmit="return confirm('{{ pet.name }} 프로필을 삭제할까요? 되돌릴 수 없어요.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-danger">{{ pet.name }} 프로필 삭제</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---- 사진 미리보기 ---- */
+const photoInput = document.getElementById('photoInput');
+const photoCircle = document.getElementById('photoCircle');
+const photoPreview = document.getElementById('photoPreview');
+const photoIcon = photoCircle.querySelector('svg');
+const photoBtnLabel = document.getElementById('photoBtnLabel');
+
+photoBtnLabel.addEventListener('click', (e)=>{ e.stopPropagation(); photoInput.click(); });
+
+photoInput.addEventListener('change', ()=>{
+  const file = photoInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    photoPreview.src = e.target.result;
+    photoPreview.style.display = 'block';
+    photoIcon.style.display = 'none';
+    photoBtnLabel.textContent = '사진 변경';
+  };
+  reader.readAsDataURL(file);
+});
+
+/* ---- 품종 선택 ---- */
+const speciesInput = document.getElementById('speciesInput');
+document.querySelectorAll('#speciesGrid .option-card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    document.querySelectorAll('#speciesGrid .option-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    speciesInput.value = card.dataset.value;
+  });
+});
+
+/* ---- 크기 선택 ---- */
+const sizeInput = document.getElementById('sizeInput');
+document.querySelectorAll('#sizeRow .size-pill').forEach(pill=>{
+  pill.addEventListener('click', ()=>{
+    document.querySelectorAll('#sizeRow .size-pill').forEach(p=>p.classList.remove('selected'));
+    pill.classList.add('selected');
+    sizeInput.value = pill.dataset.value;
+  });
+});
+
+/* ---- 등록 화면에서만: 어느 버튼으로 저장했는지 서버에 알려준다 ---- */
+const actionInput = document.getElementById('actionInput');
+if(actionInput){
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ actionInput.value = 'done'; });
+  document.getElementById('addAnotherBtn').addEventListener('click', ()=>{ actionInput.value = 'add_another'; });
+}
+
+{% if pet.pet_id %}
+/* ---- 사진 삭제 — 화면은 그대로 두고 사진만 지운다 (수정 화면 전용) ---- */
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+if(removePhotoBtn){
+  removePhotoBtn.addEventListener('click', async ()=>{
+    if(!confirm('프로필 사진을 삭제할까요?')) return;
+
+    const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const res = await fetch("{% url 'pets:photo_delete' pet.pet_id %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': token },
+    });
+
+    if(res.ok){
+      photoPreview.src = '';
+      photoPreview.style.display = 'none';
+      photoIcon.style.display = 'block';
+      photoInput.value = '';
+      photoBtnLabel.textContent = '사진 선택';
+      removePhotoBtn.remove();
+    } else {
+      alert('삭제하지 못했어요. 잠시 후 다시 시도해주세요.');
+    }
+  });
+}
+{% endif %}
+</script>
+</body>
+</html>
