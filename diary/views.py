@@ -13,7 +13,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import httpx
 from django.conf import settings
@@ -37,6 +38,11 @@ log = logging.getLogger(__name__)
 #: 실제로 덜 보고 만들어진다. 크게 잡는 건 안전하지만(어차피 거기서 또 자름)
 #: 전송량 절감 효과가 준다.
 _NOTE_CHARS_FOR_SUMMARY = 300
+
+#: "오늘"을 판단하는 기준 시간대. UTC로 저장하고(models.py 전역 원칙) 여기서만
+#: KST로 바꾼다 — UTC 자정~오전 9시 사이에 "오늘"을 UTC 기준으로 판단하면
+#: 실제로는 이미 KST로 다음 날인데 하루 전으로 잘못 세는 사고가 난다.
+_KST = ZoneInfo("Asia/Seoul")
 
 #: 직전 체중 대비 변화율 구간 — 종 구분 없이 공통이다 (2026-08-26 팀 결정).
 #: 새도 개·고양이와 다른 임계값을 쓸 근거가 없었다 — 오히려 새는 하루 중
@@ -226,6 +232,34 @@ def _detect_weight_change(rows: list[dict], age: str = "") -> dict | None:
     }
 
 
+def _calculate_streak(dates: set[str]) -> int:
+    """오늘(또는 오늘 기록이 아직 없으면 어제)부터 거슬러 올라가며 연속 기록 일수를 센다.
+
+    듀오링고 스트릭과 같은 방식이다 — 오늘 아직 기록을 안 남겼어도 어제까지
+    이어져 있으면 스트릭은 아직 안 끊긴 것으로 본다(오늘 자정까지 유예).
+    오늘도 어제도 기록이 없으면 0(끊김)이다.
+
+    `dates`는 **기간 필터와 무관하게 항상 전체 기록**에서 뽑아야 한다 — 다운로드
+    모달처럼 특정 과거 기간만 조회할 때도 "오늘 기준 스트릭"은 그대로 나와야
+    하기 때문이다 (`ReportView.get()`에서 별도 쿼리로 만든다).
+    """
+    if not dates:
+        return 0
+
+    today = datetime.now(_KST).date()
+    cursor = today
+    if cursor.isoformat() not in dates:
+        cursor -= timedelta(days=1)
+        if cursor.isoformat() not in dates:
+            return 0
+
+    streak = 0
+    while cursor.isoformat() in dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
+
+
 class ReportView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -250,9 +284,16 @@ class ReportView(APIView):
         summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
         weight_alert = _detect_weight_change(rows, pet.age)
 
+        all_dates = set(
+            DiaryEntry.objects.filter(pet=pet, user=request.user)
+            .values_list("recorded_date", flat=True)
+        )
+        streak = _calculate_streak({d.isoformat() for d in all_dates})
+
         return Response(
             {
                 "pet_id": pet_id,
+                "streak": streak,
                 "period_from": period_from,
                 "period_to": period_to,
                 "timeline": rows,
