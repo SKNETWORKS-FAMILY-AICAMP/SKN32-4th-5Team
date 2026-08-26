@@ -49,11 +49,12 @@ _KST = ZoneInfo("Asia/Seoul")
 #: 공복·급여로 5~10% 정도 왔다갔다하는 게 정상이라(myrightbird.com), 종별로
 #: 낮추면 정상 변동을 "위험"으로 잘못 잡을 수 있다.
 #:
-#:   5% 미만          — 조용히 넘어간다 (정상 범위로 본다)
-#:   5% 이상 10% 미만 — "주의" 수준 안내
-#:   10% 이상          — "병원 방문 권장" 수준 안내
-_WEIGHT_CHANGE_WATCH_THRESHOLD_PCT = 5.0
-_WEIGHT_CHANGE_VET_THRESHOLD_PCT = 10.0
+#: ★흡수(lse, 2026-08-26) — **값을 `settings` 로 옮겼다** (D-103 · D-41).
+#:   *"12% 변했다"* 는 사용자 기록이지만 *"12%면 상담하라"* 는 외부 주장이다.
+#:   전자는 계산이고 후자는 설정이다. 위 주석의 근거는 그대로 둔다 — 값이 어디서
+#:   왔는지는 **값 옆이 아니라 이 자리에** 남아야 다음 사람이 읽는다.
+_WEIGHT_CHANGE_WATCH_THRESHOLD_PCT = settings.DIARY_WEIGHT_ALERT_WATCH_PCT
+_WEIGHT_CHANGE_VET_THRESHOLD_PCT = settings.DIARY_WEIGHT_ALERT_VET_PCT
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
