@@ -38,20 +38,16 @@ log = logging.getLogger(__name__)
 #: 전송량 절감 효과가 준다.
 _NOTE_CHARS_FOR_SUMMARY = 300
 
-#: 직전 체중 대비 이 비율(%) 이상 바뀌면 "급변"으로 본다. 종별로 다르다 —
-#: 새는 대사가 빠르고 체중 대비 버틸 여력(지방·근육 비축)이 적어 같은 비율의
-#: 변화가 개·고양이보다 더 급하다. 새는 아픈 티를 늦게 낸다는 것도 이유다
-#: (증상이 보일 땐 이미 진행된 상태인 경우가 많다).
+#: 직전 체중 대비 변화율 구간 — 종 구분 없이 공통이다 (2026-08-26 팀 결정).
+#: 새도 개·고양이와 다른 임계값을 쓸 근거가 없었다 — 오히려 새는 하루 중
+#: 공복·급여로 5~10% 정도 왔다갔다하는 게 정상이라(myrightbird.com), 종별로
+#: 낮추면 정상 변동을 "위험"으로 잘못 잡을 수 있다.
 #:
-#: ⚠️ `compute/tables/`엔 조류 체중 관련 정량 자료가 없다(README "조류 정량
-#: 역치 0행") — 이 숫자는 이 프로젝트의 데이터가 아니라 일반 조류 수의학
-#: 상식을 참고한 값이다. 정확한 기준이 필요하면 수의사 상담을 권한다.
-_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = {
-    "dog": 10.0,
-    "cat": 10.0,
-    "bird": 5.0,
-}
-_DEFAULT_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = 10.0
+#:   5% 미만          — 조용히 넘어간다 (정상 범위로 본다)
+#:   5% 이상 10% 미만 — "주의" 수준 안내
+#:   10% 이상          — "병원 방문 권장" 수준 안내
+_WEIGHT_CHANGE_WATCH_THRESHOLD_PCT = 5.0
+_WEIGHT_CHANGE_VET_THRESHOLD_PCT = 10.0
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -162,8 +158,8 @@ def _summarize_via_inference(
         return "요약 서비스에 연결할 수 없습니다. 기록 원본은 아래에서 확인해 주세요.", "code"
 
 
-def _detect_weight_change(rows: list[dict], species: str) -> dict | None:
-    """가장 최근 두 체중 기록을 비교해 급변 여부를 판정한다.
+def _detect_weight_change(rows: list[dict]) -> dict | None:
+    """가장 최근 두 체중 기록을 비교해 급변 여부를 2단계(주의·병원)로 판정한다.
 
     `diary.html`의 `renderWeightStatus()`는 **절대 범위**(품종·크기별 정상 체중대)를
     보는 화면 로직이고, 이건 **변화율**을 보는 별개 신호다 — 정상 범위 안에서도
@@ -180,23 +176,29 @@ def _detect_weight_change(rows: list[dict], species: str) -> dict | None:
     if prev["weight_kg"] <= 0:
         return None
 
-    threshold = _WEIGHT_CHANGE_ALERT_THRESHOLD_PCT.get(
-        species, _DEFAULT_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT
-    )
     change_pct = (latest["weight_kg"] - prev["weight_kg"]) / prev["weight_kg"] * 100
-    if abs(change_pct) < threshold:
+    abs_pct = abs(change_pct)
+    if abs_pct < _WEIGHT_CHANGE_WATCH_THRESHOLD_PCT:
         return None
 
     direction = "증가" if change_pct > 0 else "감소"
-    pct_display = abs(round(change_pct, 1))
+    pct_display = round(abs_pct, 1)
+
+    if abs_pct < _WEIGHT_CHANGE_VET_THRESHOLD_PCT:
+        level = "watch"
+        advice = "당분간 지켜봐 주세요."
+    else:
+        level = "vet"
+        advice = "수의사와 상담해보세요."
+
     return {
+        "level": level,  # "watch" | "vet"
         "from_kg": prev["weight_kg"],
         "to_kg": latest["weight_kg"],
         "change_pct": round(change_pct, 1),
         "message": (
             f"최근 체중이 {pct_display}% {direction}했어요 "
-            f"({prev['weight_kg']}kg → {latest['weight_kg']}kg). "
-            "급격한 변화는 건강 이상 신호일 수 있으니 수의사와 상담해보세요."
+            f"({prev['weight_kg']}kg → {latest['weight_kg']}kg). {advice}"
         ),
     }
 
@@ -223,7 +225,7 @@ class ReportView(APIView):
 
         rows = [_row_to_dict(e) for e in entries]
         summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
-        weight_alert = _detect_weight_change(rows, pet.species)
+        weight_alert = _detect_weight_change(rows)
 
         return Response(
             {
