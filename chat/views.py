@@ -26,7 +26,8 @@ def _unavailable(request):
 
 @login_required
 def chat_room(request):
-    """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동."""
+    """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동.
+    고른 pet 은 세션에 남긴다 — 채팅 내역이 같은 pet 기준으로 보이게 한다."""
     pet_id = request.GET.get("pet_id")
     if pet_id:
         pet = get_object_or_404(Pet, pet_id=pet_id, user=request.user)
@@ -34,12 +35,17 @@ def chat_room(request):
         pet = request.user.pets.first()
         if pet is None:
             return redirect("pets:create")
+    request.session["active_pet_id"] = pet.pet_id
     return render(request, "chat/room.html", {"pet": pet})
 
 
 @login_required
 def session_list(request):
-    my_pet_ids = list(request.user.pets.values_list('pet_id', flat=True))
+    active = request.session.get("active_pet_id")
+    if active and request.user.pets.filter(pet_id=active).exists():
+        my_pet_ids = [active]
+    else:
+        my_pet_ids = list(request.user.pets.values_list('pet_id', flat=True))
     try:
         sessions = list(
             ChatSession.objects.filter(pet_id__in=my_pet_ids).order_by('-created_at')
