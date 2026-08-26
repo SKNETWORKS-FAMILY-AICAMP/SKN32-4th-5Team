@@ -87,6 +87,9 @@ django = [
   "Django>=5.1,<5.2",
   "djangorestframework>=3.15,<3.16",
   "httpx>=0.28,<0.29",
+  # pets 앱의 ImageField(프로필 사진)가 요구한다 (2026-08-26, 이근준 pets 이관).
+  # 없으면 `python manage.py migrate` 단계에서부터 ImportError로 막힌다.
+  "Pillow>=11.1,<12",
 ]
 # Qwen 을 **로컬에서 서빙**할 때만 (04 비교군 C·D · D-65).
 #
