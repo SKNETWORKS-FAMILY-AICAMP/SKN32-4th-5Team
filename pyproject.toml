@@ -41,6 +41,12 @@ dependencies = [
   #   D-70(*"의존성이 늘어난 모듈은 분류가 바뀐 것이다"*)의 재발이다.
   #   pydantic-settings 가 끌고 오지만 **직접 임포트하는 것은 직접 선언한다.**
   "python-dotenv>=1.0,<2",
+  # 사진 업로드 관문(D-43 · `privacy/images.py`)이 쓴다. **핵심 의존성이다.**
+  #   관문은 개인정보 처리라 `privacy/` 에 있고 `tests/` 가 검증한다. extra 에 두면
+  #   `.[api,dev]` 만 깐 CI test 잡에서 **그 테스트가 통째로 건너뛰어진다** —
+  #   email-validator·langgraph 와 같은 사고이고, D-48 교훈 #6 의 재발이다.
+  #   순수 휠이라 핵심에 두는 비용이 작다.
+  "Pillow>=11.1,<12",
 ]
 
 [project.optional-dependencies]
@@ -100,9 +106,8 @@ django = [
   #    **"pip 가 통과시킨다"와 "지원한다고 밝혔다"는 다르다.** 5.1 지원은 3.16 부터다.
   "djangorestframework>=3.16,<3.18",
   "httpx>=0.28,<0.29",
-  # pets 앱의 ImageField(프로필 사진)가 요구한다 (2026-08-26, 이근준 pets 이관).
-  # 없으면 `python manage.py migrate` 단계에서부터 ImportError로 막힌다.
-  "Pillow>=11.1,<12",
+  # Pillow 는 **핵심 의존성으로 올렸다** (2026-08-26 · 관문 D-43).
+  # 여기와 ingest 양쪽에 있던 것을 한 곳으로 모았다 (D-22).
 ]
 # Qwen 을 **로컬에서 서빙**할 때만 (04 비교군 C·D · D-65).
 #
@@ -124,7 +129,6 @@ ingest = [
   "lxml>=5.3,<6",
   "openpyxl>=3.1,<4",
   "pandas>=2.2,<3",
-  "Pillow>=11.1,<12",
   "piexif>=1.1.3,<2",
 ]
 # Qwen3-4B QLoRA (D-42). GPU 환경에서만 설치한다.

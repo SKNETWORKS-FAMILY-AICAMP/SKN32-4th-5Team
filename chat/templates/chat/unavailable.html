@@ -1,0 +1,13 @@
+{% extends 'chat/base.html' %}
+{% block title %}PetTriage — 채팅 내역{% endblock %}
+{% block eyebrow %}준비 중{% endblock %}
+{% block heading %}지난 대화를 아직 볼 수 없어요{% endblock %}
+{% block subheading %}대화는 정상적으로 저장되고 있습니다{% endblock %}
+{% block content %}
+  <div class="ws-desc" style="max-width:44rem;line-height:1.8">
+    <p>지금 대화 기록은 추론 서비스 쪽 데이터베이스에 쌓이고 있고,
+       이 화면이 보는 곳과 아직 이어져 있지 않습니다.</p>
+    <p>전환 작업(7b)에서 두 데이터베이스를 하나로 합치면 지난 대화가 여기 나타납니다.
+       <strong>기록이 사라진 것이 아닙니다.</strong></p>
+  </div>
+{% endblock %}

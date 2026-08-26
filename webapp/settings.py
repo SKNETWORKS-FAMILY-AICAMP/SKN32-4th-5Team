@@ -189,13 +189,55 @@ DIARY_WEIGHT_ALERT_WATCH_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_WATCH_PC
 DIARY_WEIGHT_ALERT_VET_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_VET_PCT", "10.0"))
 
 
+# ── 배포 보안 (2026-08-26 전체 점검 C) ───────────────────────
+# 🔴 **여섯 항목이 하나도 없었다.** `DEBUG=false` 는 첫 단추일 뿐이다 — HTTPS 로 올리면서
+#    `SESSION_COOKIE_SECURE` 가 없으면 **세션 쿠키가 평문 경로로도 나간다.**
+#
+# 개발(`DEBUG=true`)에서는 전부 끈다. 로컬은 http 라, 켜면 로그인이 되지 않는다.
+# **환경에 따라 갈리는 것을 코드가 알게 두지 않고 `DEBUG` 하나에 묶는다** — 배포에서
+# `.env` 를 빠뜨리면 `DEBUG` 가 false 이므로 **안전한 쪽으로 잠긴다.**
+#
+# 빠진 것이 있는지는 사람이 기억하지 않는다:  python manage.py check --deploy
+_PROD = not DEBUG
+
+SECURE_SSL_REDIRECT = _PROD
+SESSION_COOKIE_SECURE = _PROD
+CSRF_COOKIE_SECURE = _PROD
+SECURE_HSTS_SECONDS = 31536000 if _PROD else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _PROD
+SECURE_HSTS_PRELOAD = _PROD
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# nginx 뒤에 있으므로 **원 요청이 https 였는지는 헤더로만 알 수 있다.**
+# 이 줄이 없으면 `SECURE_SSL_REDIRECT` 가 무한 리다이렉트를 만든다.
+#   ⚠️ nginx 가 이 헤더를 **반드시 덮어써야** 한다. 사용자가 보낸 값을 그대로 믿으면
+#      아무나 https 인 척할 수 있다 (`docker/nginx/nginx.conf` 참조).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# 도메인이 정해지면 여기에 넣는다 (`https://` 를 포함한 전체 주소).
+CSRF_TRUSTED_ORIGINS = [
+    o for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o
+]
+
+# ── 업로드 상한 (D-43 관문과 짝) ─────────────────────────────
+# 관문(`privacy/images.py`)이 5MB 를 거절하지만, **거기까지 가기 전에** Django 가
+# 막는 편이 싸다 — 큰 본문을 메모리에 올리지 않는다.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+
+
 # ── DRF ──────────────────────────────────────────────────
 # ⚠️ 임시 — 세션·Basic 인증만 켜져 있다. JWT냐 세션이냐는 docs/14 §7 미결이라
 # 계정 앱이 정해지면 여기부터 바뀐다. 지금은 Django 로그인(관리자 계정 등)이 되면
 # 그대로 API도 접근 가능한 수준으로만 맞춰 둔다.
 REST_FRAMEWORK = {
+    # 🔒 **세션 인증만 쓴다** (D-104 · 2026-08-26).
+    #    `BasicAuthentication` 이 함께 켜져 있었다. 주석은 *"JWT 냐 세션이냐가 미결"* 이라
+    #    임시라고 적었는데, **그 미결은 D-104 로 닫혔다.**
+    #    쓰지 않는 인증 방식은 이득 없이 공격면만 넓힌다 — 브라우저 팝업 자격증명 경로가
+    #    열려 있고, 자격증명이 매 요청에 실린다.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
     ],
 }
