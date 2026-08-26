@@ -86,15 +86,30 @@ def _mask(v: str) -> str:
 # ── 검사 ─────────────────────────────────────────────────────
 
 
+#: 이 스크립트가 아는 키. **한 곳에만 적는다** — 아래 네 군데가 이 목록을 쓴다
+#: (검사 · 셸 가림 · dotenv 읽기 · 중복 정리). 예전에는 같은 세 줄이 네 번 반복돼
+#: 있었고, 4차에서 Django 키가 늘자 **한 곳만 고쳐서 나머지가 조용히 빠질** 자리였다 (D-22).
+KEYS: tuple[tuple[str, bool, str], ...] = (
+    ("OPENAI_API_KEY", False, "없으면 --arm none 기준선만 돈다 (LLM 태스크 전부 폴백)"),
+    ("JWT_SECRET_KEY", True, "없으면 로그인이 실패한다 (JWTKeyMissingError)"),
+    ("DATABASE_URL", True, "없으면 회원가입·프로필·다이어리가 통째로 빠진다"),
+    # ── 4차 · Django 웹앱 (D-99) ────────────────────────────
+    ("DJANGO_SECRET_KEY", True, "없으면 **Django 가 기동을 멈춘다** (D-41 · settings.py)"),
+    ("DJANGO_DATABASE_URL", True, "웹앱 DB. DATABASE_URL 과 **다른 곳**이어야 한다 (D-104)"),
+    ("INFERENCE_INTERNAL_URL", True, "8000 은 Django 자기 포트다 — 8001 이어야 한다"),
+    ("DJANGO_DEBUG", False, "로컬은 true. 없으면 false 라 정적·미디어가 안 뜬다"),
+    ("DJANGO_ALLOWED_HOSTS", False, "기본 localhost,127.0.0.1"),
+)
+
+#: 없으면 앱이 못 뜨는 것들. dotenv 가 실제로 읽는지까지 확인한다.
+REQUIRED = tuple(k for k, need, _ in KEYS if need)
+
+
 def _check(lines: list[str]) -> list[str]:
     """문제 목록을 낸다. 비어 있으면 통과."""
     problems: list[str] = []
 
-    for key, need, hint in (
-        ("OPENAI_API_KEY", False, "없으면 --arm none 기준선만 돈다 (LLM 태스크 전부 폴백)"),
-        ("JWT_SECRET_KEY", True, "없으면 로그인이 실패한다 (JWTKeyMissingError)"),
-        ("DATABASE_URL", True, "없으면 회원가입·프로필·다이어리가 통째로 빠진다"),
-    ):
+    for key, need, hint in KEYS:
         v = _value(lines, key)
         dup = len(_find(lines, key))
         if v in PLACEHOLDERS:
@@ -110,8 +125,13 @@ def _check(lines: list[str]) -> list[str]:
                 f"고칠 때 앞엣것을 지운다(값은 보존)"
             )
 
+    # 추론 주소가 Django 자기 포트를 가리키면 GET /api/report 가 자기 자신을 부른다.
+    inf = _value(lines, "INFERENCE_INTERNAL_URL")
+    if inf and inf.endswith(":8000"):
+        problems.append(f"{BAD} INFERENCE_INTERNAL_URL 이 :8000 이다 — 8001 이어야 한다")
+
     # 셸이 .env 를 가리는가 — **환경변수가 dotenv 보다 우선한다**
-    for key in ("OPENAI_API_KEY", "JWT_SECRET_KEY", "DATABASE_URL"):
+    for key, _need, _hint in KEYS:
         shell = os.environ.get(key)
         if shell is not None:
             problems.append(
@@ -136,7 +156,7 @@ def _verify_loadable() -> list[str]:
         return [f"{WARN} python-dotenv 가 없다 — 패키지 설치가 먼저다"]
 
     dv = dotenv_values(str(ENV))
-    for key in ("OPENAI_API_KEY", "JWT_SECRET_KEY", "DATABASE_URL"):
+    for key in REQUIRED:
         got = dv.get(key)
         if got is None:
             problems.append(f"{BAD} {key} 를 dotenv 가 못 읽는다 — 인코딩이나 문법 문제다")
@@ -183,6 +203,35 @@ def _interactive(lines: list[str]) -> list[str]:
         print(f"  {OK} DATABASE_URL    SQLite 기본값을 넣었습니다 (설치 불필요)")
         print(f"       {default}")
 
+    # ── 4차 · Django 웹앱 (D-99) ────────────────────────────
+    if _value(lines, "DJANGO_SECRET_KEY") in PLACEHOLDERS:
+        gen = secrets.token_urlsafe(48)
+        lines = _set(lines, "DJANGO_SECRET_KEY", gen)
+        print(f"\n  {OK} DJANGO_SECRET_KEY  자동 생성했습니다 ({len(gen)}자)")
+        print("       JWT_SECRET_KEY 와 **다른 값**입니다 — 용도가 다릅니다")
+
+    if _value(lines, "DJANGO_DATABASE_URL") in PLACEHOLDERS:
+        # 🔴 DATABASE_URL 과 **다른 파일**이어야 한다. 같은 곳을 가리키면
+        #    `python manage.py migrate` 가 pets/diary 에서 충돌해 끝까지 못 돈다.
+        #    D-104 로 소유자는 Django 이고, 7b(라우터 폐기)에서 하나로 합친다.
+        default = "sqlite+pysqlite:///./webapp.sqlite3"
+        lines = _set(lines, "DJANGO_DATABASE_URL", default)
+        print(f"  {OK} DJANGO_DATABASE_URL  {default}")
+        print("       DATABASE_URL 과 **일부러 다른 파일**입니다 (D-104 · 7b 에서 합칩니다)")
+
+    if _value(lines, "INFERENCE_INTERNAL_URL") in PLACEHOLDERS:
+        lines = _set(lines, "INFERENCE_INTERNAL_URL", "http://127.0.0.1:8001")
+        print(f"  {OK} INFERENCE_INTERNAL_URL  http://127.0.0.1:8001")
+        print("       8000 은 Django 자기 포트입니다 — 그 값이면 자기 자신을 부릅니다")
+
+    if _value(lines, "DJANGO_DEBUG") in PLACEHOLDERS:
+        lines = _set(lines, "DJANGO_DEBUG", "true")
+        print(f"  {OK} DJANGO_DEBUG    true (로컬). 코드 기본값은 false 입니다")
+
+    if _value(lines, "DJANGO_ALLOWED_HOSTS") in PLACEHOLDERS:
+        lines = _set(lines, "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+        print(f"  {OK} DJANGO_ALLOWED_HOSTS  localhost,127.0.0.1")
+
     return lines
 
 
@@ -215,11 +264,7 @@ def main() -> int:
         #    하나 더 생기는 것이고, 이 스크립트에는 파괴적 동작이 없다 —
         #    이미 값이 있는 항목은 묻지도 건드리지도 않고, 지우는 것은 중복 키의
         #    **앞엣것**(뒤엣것이 이기므로 이미 무효인 값)뿐이다.
-        dups = [
-            k
-            for k in ("OPENAI_API_KEY", "JWT_SECRET_KEY", "DATABASE_URL")
-            if len(_find(lines, k)) > 1
-        ]
+        dups = [k for k, _n, _h in KEYS if len(_find(lines, k)) > 1]
         if dups:
             print(f"\n{WARN} 중복된 키가 있습니다: {' '.join(dups)}")
             print("   마지막 정의(실효값)만 남기고 앞엣것을 지웁니다.")
