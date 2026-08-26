@@ -315,9 +315,12 @@ class GraphEngine:
 
         if status == "clarify":
             session.clarify_turns = state.get("clarify_turns", 1)
+            if status == "clarify":
+                session.clarify_turns = state.get("clarify_turns", 1)
             return AskResponse(
                 status="clarify",
                 session_id=session.session_id,
+                corrected_from=(state.get("slots") or {}).get("substance_corrected_from"),
                 clarify=ClarifyPrompt(
                     missing=list(state.get("missing_slots") or []),
                     question=state.get("clarify_question", "추가 정보를 알려주세요."),
@@ -369,6 +372,9 @@ class GraphEngine:
             # 쓰게 되고, 그 순간 도약이 확정이 된다. 둘 중 **하나만** 찬다 (D-59 ⑤).
             assumed_substance=substance if assumed else None,
             identified_substance=None if assumed else substance,
+            # **교정은 추정과 다른 사실이다.** 위 두 필드가 *무엇으로 봤는가* 를
+            # 가른다면 이것은 *사용자가 뭐라 썼는가* 를 남긴다.
+            corrected_from=(state.get("slots") or {}).get("substance_corrected_from"),
             # **코드가 계산한 수치를 응답에 남긴다** (D-16). 계산할 슬롯이 없으면 `None` —
             # 빈 dict 을 모델로 만들면 *"계산했는데 값이 없다"* 로 읽힌다 (D-10).
             computed=self._computed(state),

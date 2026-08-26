@@ -406,7 +406,13 @@ class AskResponse(_Strict):
     #:
     #: **못 하는 것을 한다고 적지 않는다** (D-58).
     identified_substance: SubstanceName | None = None
-
+    #: **보호자가 쓴 말을 다르게 읽었다면 그 사실.** (표기 흔들림 교정)
+    #:
+    #: `identified_substance` 가 *무엇에 관한 답인가* 를 남긴다면, 이 필드는
+    #: *어떻게 거기 도달했는가* 를 남긴다. 교정은 추정이므로 **추정한 사실
+    #: 자체가 답의 일부다** — 감추면 보호자는 자기 말이 어떻게 해석됐는지
+    #: 모른 채 답을 받는다 (`assumed_substance` 와 같은 이유 · D-59 ⑤).
+    corrected_from: str | None = None
     #: **코드가 계산한 수치.** 계산할 슬롯이 없으면 `None` (D-16 · D-10).
     computed: ComputedMetrics | None = None
 
