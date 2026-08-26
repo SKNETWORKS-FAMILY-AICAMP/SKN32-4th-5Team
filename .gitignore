@@ -169,3 +169,6 @@ SKN_3rd_5Team_REPORT_*.zip
 
 # 업로드된 반려동물 사진 (사용자 데이터)
 /media/
+
+# `collectstatic` 이 모으는 생성물. 원본은 각 앱과 Django 패키지 안에 있다.
+/staticfiles/

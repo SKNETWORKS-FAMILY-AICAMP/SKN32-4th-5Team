@@ -8,7 +8,6 @@ FastAPI 쪽(`src/pettriage/app/`)과 같은 `.env`를 공유한다 — `DATABASE
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from django.conf.global_settings import STATICFILES_DIRS
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -156,8 +155,22 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+# ── 정적 파일 ─────────────────────────────────────────────
+# 🔴 **`/static/` 은 3차 FastAPI 가 쓰고 있다.** nginx 가 `/static/` 을 통째로 8001 로
+#    보내므로(docker/nginx/nginx.conf), Django 관리자가 `/static/admin/...` 을 부르면
+#    FastAPI 로 가서 **404 다** — 관리자 화면의 CSS 가 안 뜬다 (12 §3.1 · 11 §6.2).
+#
+#    접두사를 갈라 놓는다. `/django-static/` 은 nginx 의 `location /` 규칙에 걸려
+#    Django 로 온다. 6단계에서 3차 `web/` 을 지우면 `/static/` 을 되찾을 수 있다.
+STATIC_URL = "/django-static/"
+
+# `collectstatic` 이 모아 놓을 자리. **이게 없으면 collectstatic 이 실행되지 않는다** —
+# 배포에서 관리자·DRF 화면의 정적 파일을 nginx 가 서빙할 방법이 사라진다 (12 §9).
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# ⚠️ `STATICFILES_DIRS` 를 두지 않는다. 프로젝트 공용 정적 파일이 아직 없고
+#    (`{% static %}` 을 쓰는 템플릿이 하나도 없다), 없는 폴더를 가리키면
+#    `check` 가 매번 W004 로 경고한다. 생기면 그때 되살린다 (D-58).
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
