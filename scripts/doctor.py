@@ -337,8 +337,12 @@ def check_webapp() -> None:
     if not inf:
         line(WARN, "INFERENCE_INTERNAL_URL", "없음 — 기본값 :8001 을 쓴다")
     elif inf.endswith(":8000"):
-        line(BAD, "INFERENCE_INTERNAL_URL", f"{inf} — 8000 은 Django 자기 포트다",
-             "8001 로 고친다 (docs/12 §2)")
+        line(
+            BAD,
+            "INFERENCE_INTERNAL_URL",
+            f"{inf} — 8000 은 Django 자기 포트다",
+            "8001 로 고친다 (docs/12 §2)",
+        )
     else:
         line(OK, "INFERENCE_INTERNAL_URL", inf)
 
@@ -346,8 +350,12 @@ def check_webapp() -> None:
     if dj_url and dj_url == api_url:
         # D-104 로 소유자는 Django 지만, FastAPI 라우터를 폐기하기 전까지는
         # 같은 DB 를 가리키면 pets/diary 에서 스키마가 부딪힌다.
-        line(BAD, "DB 분리", "DJANGO_DATABASE_URL 이 DATABASE_URL 과 같다",
-             "migrate 가 끝까지 못 돈다 — 다른 파일로 나눈다 (D-104 · 7b 에서 합침)")
+        line(
+            BAD,
+            "DB 분리",
+            "DJANGO_DATABASE_URL 이 DATABASE_URL 과 같다",
+            "migrate 가 끝까지 못 돈다 — 다른 파일로 나눈다 (D-104 · 7b 에서 합침)",
+        )
     elif dj_url:
         line(OK, "DB 분리", "웹앱 DB 가 따로 있다")
     else:
@@ -371,8 +379,12 @@ def check_webapp() -> None:
         return
     missing = {"pets", "diary_entries"} - names
     if missing:
-        line(BAD, "마이그레이션", f"{' '.join(sorted(missing))} 표가 없다",
-             "python manage.py migrate  (D-104 완료 판정)")
+        line(
+            BAD,
+            "마이그레이션",
+            f"{' '.join(sorted(missing))} 표가 없다",
+            "python manage.py migrate  (D-104 완료 판정)",
+        )
     else:
         line(OK, "마이그레이션", f"표 {len(names)}개")
 
@@ -403,15 +415,21 @@ def check_docker() -> None:
     dk = find_docker()
     if not dk:
         line(
-            WARN, "docker", "없음",
+            WARN,
+            "docker",
+            "없음",
             "Docker Desktop 설치. 없어도 [5]는 2번(Django 만)으로 돈다",
         )
         return
     if shutil.which("docker"):
         line(OK, "docker", "PATH 에 있음")
     else:
-        line(WARN, "docker", dk,
-             "PATH 밖이다. PowerShell 에서 직접 칠 때만 걸린다 — 런처는 절대 경로로 부른다")
+        line(
+            WARN,
+            "docker",
+            dk,
+            "PATH 밖이다. PowerShell 에서 직접 칠 때만 걸린다 — 런처는 절대 경로로 부른다",
+        )
 
     # 🔴 docker 는 자격 증명 헬퍼를 **PATH 에서** 찾는다. 실행 파일만 찾아 주고
     #    형제를 안 찾아 주면 이미지 받기가 죽는다 — 그런데 오류는 자격 증명 이야기라
@@ -425,7 +443,9 @@ def check_docker() -> None:
     try:
         r = subprocess.run(
             [dk, "info", "--format", "{{.ServerVersion}}"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
             env={**os.environ, "PATH": os.environ.get("PATH", "") + ";" + str(Path(dk).parent)},
         )
     except Exception as e:
