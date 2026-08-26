@@ -198,6 +198,21 @@ function removeLoadingBubble(){
   if(el) el.remove();
 }
 
+function typeText(el, text, onDone){
+  const chars = Array.from(text || "");
+  let i = 0;
+  (function step(){
+    i += 1;
+    el.textContent = chars.slice(0, i).join('');
+    scrollToBottom();
+    if(i < chars.length){
+      setTimeout(step, 30);
+    } else if(onDone){
+      onDone();
+    }
+  })();
+}
+
 function renderAnswered(data){
   const t = data.triage;
   const meta = levelMeta[t.level] || { badge: t.badge, message: t.message };
@@ -213,9 +228,16 @@ function renderAnswered(data){
 
   const explain = document.createElement("div");
   explain.className = "explain";
-  explain.textContent = data.answer;
   bubble.appendChild(explain);
 
+  row.appendChild(bubble);
+  chatLog.appendChild(row);
+  scrollToBottom();
+
+  typeText(explain, data.answer, ()=> renderAnsweredRest(data, t, bubble));
+}
+
+function renderAnsweredRest(data, t, bubble){
   // **교정했다는 사실 자체가 답의 일부다.** 밝히지 않으면 보호자는
   // 자기 말이 바뀐 것을 모른 채 답을 받고, 정정할 기회를 잃는다.
   if(data.corrected_from){
@@ -256,9 +278,6 @@ function renderAnswered(data){
   audit.innerHTML = `규칙 ${lv(t.rule_level)} · LLM ${lv(t.llm_level)} → 최종 ${t.level}`
     + (t.overridden ? ` <span class="gate">· 게이트가 LLM의 하향을 차단했어요</span>` : '');
   bubble.appendChild(audit);
-
-  row.appendChild(bubble);
-  chatLog.appendChild(row);
   scrollToBottom();
 }
 
