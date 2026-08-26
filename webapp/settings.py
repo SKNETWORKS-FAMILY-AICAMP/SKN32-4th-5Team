@@ -28,7 +28,10 @@ if not _secret_key:
     )
 SECRET_KEY = _secret_key
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+# 🔴 **기본값은 false 다.** `.env` 를 빠뜨린 배포에서 디버그 페이지가 켜진 채 뜨는 것이
+#    가장 비싼 실패다. 로컬은 `.env` 에 `DJANGO_DEBUG=true` 를 넣는다 (.env.example).
+#    SECRET_KEY 는 없으면 기동을 막고(D-41), DEBUG 는 없으면 안전한 쪽으로 간다.
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 
@@ -163,8 +166,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ── 추론 서비스(FastAPI) 내부 호출 ──────────────────────────
 # GET /api/report가 요약(LLM)만 여기로 위임한다 (D-99 3안). 외부에 안 열리는
-# 내부망 주소라 로컬 개발 기본값은 127.0.0.1:8000이다 (docs/14 §3.4).
-INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8000")
+# 내부망 주소다 (docs/14 §3.4).
+#   🔴 **8001 이다.** 8000 은 Django 자기 포트라, 그 값이면 자기 자신을 부른다
+#      (2026-08-24 수정 — nginx `upstream fastapi` 도 8001 이다).
+INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8001")
 
 
 # ── DRF ──────────────────────────────────────────────────
