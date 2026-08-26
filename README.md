@@ -95,11 +95,11 @@
 | **임베딩** | **BAAI/bge-m3** (`sentence-transformers`) | 한국어 문장으로 문장화한 코퍼스라 다국어 모델이 필요했다 |
 | **대형 LLM** | **gpt-4o-mini** (OpenAI 호환 엔드포인트 교체 가능) | 비교군 `A`·`A-LC` |
 | **sLLM 파인튜닝** | **Qwen3-4B** + **QLoRA** (`peft` · `trl` · `bitsandbytes` 4bit) | 비교군 `C`·`D`. RTX 3080(10GB)에서 학습 |
-| **API** | **FastAPI** `0.115` · **Pydantic v2** · uvicorn | **계약을 스키마로 강제한다** — 안전 불변식이 타입 검증에 들어가 있다 |
-| **DB** | **MySQL** + **SQLAlchemy 2.x** (개발은 SQLite) · PyJWT · bcrypt | 계정 · 반려동물 프로필 · 다이어리 |
-| **프론트** | 정적 HTML 6장 — 빌드 도구·node 없음 | API와 **같은 출처**에서 뜬다. 배달 계층의 일부다 |
+| **배달** | **Django 5.1**(공개 · 인증 · 화면) + **FastAPI** `0.115`(추론, 내부) | 4차에 둘로 나눴다 (D-99). 계약은 여전히 Pydantic v2 스키마가 강제한다 |
+| **DB** | **MySQL**(개발은 SQLite) · **Django ORM** | 계정 · 프로필 · 다이어리. 스키마 소유자는 Django (D-104). SQLAlchemy 는 7b 에서 걷어낸다 |
+| **프론트** | **Django 템플릿 9장** — 빌드 도구·node 없음 | 3차 정적 HTML 6장은 6단계 완료 시 지운다 |
 | **수집·전처리** | pypdf · pdfplumber · BeautifulSoup · pandas · piexif | 원문 → 사실 표 → **코드가 문장화** |
-| **품질** | pytest **589** · ruff · mypy · pre-commit · GitHub Actions | 안전 장치 회귀 테스트가 CI 게이트다 |
+| **품질** | pytest **627** · ruff · mypy · pre-commit · GitHub Actions | 안전 장치 회귀 테스트가 CI 게이트다. 🔴 Django 앱은 아직 밖에 있다 (13 §5) |
 | **런타임** | Python **3.11** · `constraints.txt` 로 버전 고정 | 재현성 요건 |
 
 > **버전을 상한까지 고정한 이유** — `constraints.txt` 가 잠근다.
@@ -120,7 +120,20 @@
    4  환경 점검        doctor                 8  DB 초기화   9  자유질의 검증
 ```
 
-위에서부터 **1 → 2 → 3** 을 누르면 준비가 끝난다. MySQL 도 도커도 필요 없다 — 기본값이 SQLite 파일 하나다.
+위에서부터 **1 → 2 → 3** 을 누르면 준비가 끝난다. MySQL 은 필요 없다 — 기본값이 SQLite 파일 하나다.
+
+🔴 **4차는 프로세스가 셋이다** — Django(:8000) · FastAPI 추론(:8001) · nginx(:80).
+`5` 를 누르면 구성을 고를 수 있고, **`1` (4차 전체)** 는 셋을 한 번에 띄운다.
+`http://localhost/` 로 열린다.
+
+| 고름 | 무엇이 뜨나 | 필요한 것 |
+|---|---|---|
+| **1** 4차 전체 | 로그인 · 펫 · 다이어리 · **채팅** | Docker Desktop (nginx 용) |
+| **2** Django 만 | 위에서 **채팅만 빠진다** | 없음 |
+| **3** 추론 만 | 3차 화면. 4차 화면은 안 보인다 | 없음 |
+
+`2` 로도 대부분을 볼 수 있다. **채팅의 `/api/ask` 만 nginx 가 있어야** 8001 로 간다.
+자세한 절차는 [`docs/09_새환경-준비.md`](docs/09_새환경-준비.md) §6.
 
 | 환경 | 실행 |
 |---|---|
@@ -139,11 +152,12 @@ GPU가 없어도 API·테스트는 전부 돈다. 학습 의존성은 `[train]` 
 
 ```bash
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
-make install                                          # = pip install -e '.[api,rag,ingest,db,dev]' -c constraints.txt
-cp .env.example .env                                  # 키 입력 (OPENAI_API_KEY · JWT_SECRET_KEY)
-pytest                                                # 589 passed  (-q 를 붙이지 않는다)
+make install                                          # = pip install -e '.[api,rag,ingest,db,dev,django]' -c constraints.txt
+python scripts/setup_env.py                           # .env 생성·검증 (Django 키 5종 포함)
+pytest                                                # 627 passed  (-q 를 붙이지 않는다)
 python scripts/build_index.py --store chroma          # 벡터 인덱스는 커밋되지 않는다. 각자 만든다
-make serve                                            # http://127.0.0.1:8000
+python manage.py migrate                              # 웹앱 DB (pets · diary)
+python PetTriage_Launcher                             # [5] 시연 → http://localhost/
 ```
 
 🪟 **Windows 에는 `make` 가 없다.** `Makefile` 을 열면 각 타깃의 명령이 그대로 적혀 있으니 직접 쓴다.
@@ -157,6 +171,7 @@ CI 와 같은 검사를 돌리려면 — `ruff check src tests scripts eval` · 
 | `.[ingest]` | PDF·HTML 파싱, EXIF 제거 |
 | `.[qwen]` | 로컬 Qwen 서빙 (비교군 C·D) |
 | `.[train]` | GPU 전용 — torch · peft · trl · bitsandbytes |
+| `.[django]` | **웹앱** — Django · DRF · httpx. 없으면 `manage.py` 가 안 뜬다 |
 | `.[dev]` | pytest · ruff · pre-commit |
 
 🔴 **`[db]` 를 빠뜨리지 않는다.** 없어도 설치는 성공하지만 `tests/test_auth_api.py` 가 모듈째
@@ -177,12 +192,19 @@ make index     # 사실 표 → 청크         make todo     # 남은 일 목록
 
 ## 목차
 
+**4차 (진행 중)** —
+[산출물 다섯](#필수-산출물--4차-다섯) ·
+[전환 설계](docs/14_전환설계.md) ·
+[진행 상태](docs/14_전환설계.md)
+
+**3차 (완료)** —
 [핵심 주장](#핵심-주장--안전은-사후-검증이-아니라-사전-바닥에서-온다) ·
 [안전 장치](#안전-장치--지표가-아니라-구조로-막는다) ·
 [측정 결과](#측정-결과) ·
 [아직 못 한 것](#아직-못-한-것) ·
-[필수 산출물](#필수-산출물-넷) ·
-[역할 분담](#역할-분담) ·
+[산출물 넷](#필수-산출물--3차-넷) ·
+[역할 분담](#역할-분담-3차)
+
 [저장소 구조](#저장소-구조) ·
 [데이터](#데이터는-이-저장소에-없다) ·
 [라이선스](#라이선스)
@@ -452,7 +474,7 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 
 ---
 
-## 필수 산출물 넷
+## 필수 산출물 — 3차 넷
 
 | 산출물 | 어디 |
 |---|---|
@@ -463,10 +485,29 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 
 **설계 결정 기록**(D-01~D-98)을 맥락·대안·트레이드오프와 함께 남겼다 →
 [`docs/06`](docs/06_설계결정기록.md)
+4차 결정(**D-99~D-105**)은 [`docs/14` §4](docs/14_전환설계.md) 에 초안으로 있다 — 06 에 편입 예정.
 
 ---
 
-## 역할 분담
+## 필수 산출물 — 4차 다섯
+
+| 산출물 | 어디 | 상태 |
+|---|---|---|
+| **요구사항 정의서** | [`docs/10`](docs/10_요구사항정의서.md) | ✅ UC 9 · FR 23 · NFR 12 · 추적표 |
+| **화면설계서** | [`docs/11`](docs/11_화면설계서.md) | ✅ 화면 10장 · 트리아지 3상태 |
+| **시스템 구성도** | [`docs/12`](docs/12_시스템구성도.md) | ✅ 포트 · 라우팅 · 저장소 · 배포 |
+| **테스트 계획·결과 보고서** | [`docs/13`](docs/13_테스트계획.md) | 🟡 계획 완료 · 결과는 8단계 |
+| **LLM 연동 웹 애플리케이션** | `webapp/` · `accounts/` · `pets/` · `diary/` · `chat/` | 🟡 전환 중 (4·5·6단계) |
+
+전환 설계는 [`docs/14`](docs/14_전환설계.md) — 왜 전체를 Django 로 옮기지 않는지, 경계가 어디인지,
+9단계 진행 순서가 들어 있다. **진행 상태는 `14 §5.1` 표가 단일 출처다.**
+
+> 🔴 **4차의 핵심 카드는 "판정이 바뀌지 않았다"** 다 (D-102).
+> 전환 전 기준선을 태그(`freeze-django-before`)로 박아 뒀고, 8단계에서 그것과 맞댄다.
+
+---
+
+## 역할 분담 (3차)
 
 | 담당 | 맡은 것 |
 |---|---|
@@ -478,6 +519,11 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 > 한 사람이 전부 한 프로젝트가 아니다. 그래프를 **조립**한 것과 그것을 **API에 배선**한 것,
 > 골든셋을 **처음 만든 것**과 **확장하고 정정한 것**은 서로 다른 일이고 둘 다 필요했다.
 >
+> **4차 배분은 아직 초안이다** — [`docs/14` §6](docs/14_전환설계.md).
+> 3차에서 설계 문서가 117:0 으로 쏠렸고, 그것을 되풀이하지 않으려고 겹치지 않는 네 덩어리로
+> 나눴다. 산출물 문서의 기여는 각 문서 끝의 **기여 이력** 표에 남긴다
+> ([`CONTRIBUTING`](.github/CONTRIBUTING.md) — 산출물 문서는 어떻게 쓰나).
+
 > 도메인도 제안 하나로 정해지지 않았다 — 원 제안(중독 응급 QA)에 확장 ①(관찰 지표)과
 > 확장 ②(다이어리 통합)가 얹혀 지금 형태가 됐고, 그 과정에서 원안의 약점 둘
 > (내부 문서 부재 · 요약 필연성 부족)이 해소됐다. →
@@ -517,15 +563,23 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 │   │   ├── datasets/   샘플 스키마 · 태스크 혼합 · 누수 검사
 │   │   ├── training/   Qwen3-4B QLoRA (PEFT + TRL)
 │   │   └── serving/    LLMClient — 로컬 Qwen · API · LangChain · Echo
-│   ├── privacy/        ⚠️ 비어 있다. 관문 5단계가 들어올 자리
+│   ├── privacy/        🔒 사진 업로드 관문 — EXIF 제거 · 재인코딩 (D-43)
 │   ├── safety/         출력 직전 관문 — 외국 핫라인 차단
-│   ├── app/            FastAPI — 계약 · 라우터 · 세션 · 저장소
-│   │   ├── models.py   ORM 모델 (User · Pet · DiaryEntry · ChatSession)
-│   │   └── web/        데모 프론트 — 정적 HTML 6장
+│   ├── app/            FastAPI 추론 — 계약 · 라우터 · 세션 · 저장소
+│   │   ├── models.py   ⚠️ SQLAlchemy ORM — 7b 에서 걷어낸다 (D-104)
+│   │   └── web/        3차 프론트 6장 — 6단계 완료 시 지운다
 │   └── tools/          운영 도구 (코퍼스 검증)
+├── webapp/             🌐 Django 프로젝트 — settings · urls · asgi/wsgi
+├── accounts/           로그인 · 회원가입 (세션 인증)
+├── pets/               반려동물 프로필 — 사진은 관문을 지난다
+├── diary/              다이어리 · 기간 리포트 (요약은 추론 서비스로 위임)
+├── chat/               채팅 화면 · 대화 내역  ⚠️ 내역은 7b 까지 503 (D-105)
+├── templates/          accounts · pets 화면
+├── manage.py           Django 진입점
+├── docker/nginx/       라우팅 — /api/ 는 추론, 나머지는 Django
 ├── eval/               골든셋 60건 · 평가 하네스 · 결과 보고서
 ├── scripts/            진입점 — 인덱스 빌드 · 검사기 · 학습 데이터 생성 · 진단
-├── tests/              안전 장치 회귀 테스트 589건
+├── tests/              안전 장치 회귀 테스트 627건  🔴 Django 앱은 아직 밖 (13 §5)
 ├── data/               🔴 대장 + 사실 표만 커밋. 원문은 커밋 금지
 └── .github/            CI · PR/이슈 템플릿 · 기여 규약
 ```

@@ -12,7 +12,7 @@
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 make install      # 의존성 + pre-commit 훅
-pytest            # 589 passed, 22 deselected
+pytest            # 627 passed, 22 deselected
 make serve        # http://127.0.0.1:8000
 ```
 
@@ -233,7 +233,7 @@ Django 회원가입을 검증하는 것처럼 적혀 있던 적이 있는데, �
 
 🔴 **값이 적힌 자리를 조심한다.** 포트 번호, 테스트 개수, top-k, 지연 시간처럼
 코드에서 읽어 온 값은 **코드가 바뀌면 문서가 조용히 거짓말을 시작한다.**
-실제로 두 번 났다 — 테스트 수 `460`(실제 589), 그리고 Django·FastAPI 포트가
+실제로 두 번 났다 — 테스트 수 `460`(당시 실제 589), 그리고 Django·FastAPI 포트가
 `14 §3.1` 에서 서로 뒤바뀌어 **막아야 할 포트를 열라고 지시**하고 있었다.
 
 그래서 값에는 **출처를 함께 적는다** — `configs/default.yaml:69` 처럼.
