@@ -29,6 +29,15 @@ ID_RE = re.compile(r"\b((?:UC|FR|NFR|SC|A|TC)-\d{2})\b")
 TODO = "⬜"
 
 
+def _empty(cell: str) -> bool:
+    """빈 칸이거나 `⬜` 로 시작하면 미착수다.
+
+    `⬜ 7b` 처럼 **언제 할지를 덧붙인 표기**를 놓치던 버그가 있었다 (2026-08-26).
+    정확히 `⬜` 인 경우만 봐서, 아홉 줄이 테스트 없는 채로 조용히 통과했다.
+    """
+    return not cell or cell.startswith(TODO)
+
+
 def _clean(cell: str) -> str:
     """표 칸에서 강조·코드 표시를 걷어 낸다."""
     return re.sub(r"[*`~]", "", cell).strip()
@@ -116,9 +125,9 @@ def main() -> int:
         for uc in refs:
             if uc not in ucs:
                 err.append(f"{fid} 가 없는 유스케이스 {uc} 를 가리킨다")
-        if not refs and TODO not in cells[2]:
+        if not refs and not _empty(cells[2]):
             warn.append(f"{fid} 에 유스케이스 참조가 없다")
-        if len(cells) > 4 and (not cells[4] or cells[4] == TODO):
+        if len(cells) > 4 and _empty(cells[4]):
             warn.append(f"{fid} 의 근거 칸이 비었다 — 근거 없는 줄은 요구사항이 아니다 (§0.1 ③)")
 
     # ── NFR: 측정 방법과 실측값
@@ -126,9 +135,9 @@ def main() -> int:
         nid = next(iter(_ids(cells[0])), None)
         if not nid or not nid.startswith("NFR-"):
             continue
-        if len(cells) > 2 and (not cells[2] or cells[2] == TODO):
+        if len(cells) > 2 and _empty(cells[2]):
             err.append(f"{nid} 에 측정 방법이 없다 — 잴 수 없으면 NFR 이 아니다 (§0.1 ②)")
-        if len(cells) > 3 and (not cells[3] or cells[3] == TODO):
+        if len(cells) > 3 and _empty(cells[3]):
             warn.append(f"{nid} 의 실측값이 비었다")
 
     # ── 추적표
@@ -148,7 +157,7 @@ def main() -> int:
         for sc in _ids(cells[2]) if len(cells) > 2 else []:
             if sc.startswith("SC-") and sc not in scs:
                 err.append(f"추적표 {fid} 가 없는 화면 {sc} 를 가리킨다")
-        if len(cells) > 3 and (not cells[3] or cells[3] == TODO):
+        if len(cells) > 3 and _empty(cells[3]):
             warn.append(f"{fid} 에 대응 테스트가 없다 — 7단계 입력")
 
     for fid in sorted(frs - traced):

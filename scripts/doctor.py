@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -94,6 +96,13 @@ def check_packages() -> None:
         ("bcrypt", "bcrypt [db]", "인증·프로필 25건이 안 돈다", True),
         ("jwt", "PyJWT [db]", "인증·프로필 25건이 안 돈다", True),
         ("torch", "torch", "--arm C/D (로컬 Qwen) 를 못 돌린다", False),
+        # 🔴 4차 · 배달 계층 (D-99). 없으면 `manage.py` 가 **아예 안 뜬다** —
+        #    화면·로그인·펫·다이어리가 통째로 빠진다. 2026-08-26 실제로 겪었다:
+        #    런처의 `PKG_EXTRAS` 에 `django` 가 없어 설치를 정상적으로 끝내도 없었다.
+        ("django", "Django [django]", "웹앱(manage.py)이 아예 안 뜬다", True),
+        ("rest_framework", "djangorestframework [django]", "다이어리 API 가 안 뜬다", True),
+        ("httpx", "httpx [django]", "GET /api/report 가 500 으로 죽는다", True),
+        ("PIL", "Pillow [django]", "펫 사진 업로드가 안 된다", True),
     ]
     for mod, name, why, required in need:
         if _has(mod):
@@ -101,7 +110,7 @@ def check_packages() -> None:
         else:
             line(BAD if required else WARN, name, f"없음 — {why}")
     if not all(_has(m) for m, _, _, req in need if req):
-        print("       → pip install -e '.[api,rag,ingest,db,dev]' -c constraints.txt")
+        print("       → pip install -e '.[api,rag,ingest,db,dev,django]' -c constraints.txt")
 
 
 def check_config() -> None:
@@ -296,6 +305,138 @@ def check_git() -> None:
     )
 
 
+def check_webapp() -> None:
+    """4차 웹앱 — **환경변수와 마이그레이션.** (D-99 · D-104)
+
+    화면이 뜨는 것과 **쓸 수 있는 것**은 다르다. `DJANGO_SECRET_KEY` 가 없으면
+    기동조차 안 되고(D-41), 마이그레이션이 안 돌면 뜨긴 뜨는데 **로그인·펫 등록이
+    전부 실패한다.** 파일 유무만 보면 그 상태가 초록으로 찍힌다.
+    """
+    section("웹앱 (Django)")
+    env = ROOT / ".env"
+    vals: dict[str, str] = {}
+    if env.exists():
+        for raw in env.read_text(encoding="utf-8", errors="replace").splitlines():
+            k, sep, v = raw.partition("=")
+            if sep:
+                vals[k.strip()] = v.strip().strip("'\"")
+
+    def _v(key: str) -> str:
+        return os.getenv(key, "").strip() or vals.get(key, "")
+
+    # ⚠️ 값을 찍지 않는다 — 길이만 본다.
+    sk = _v("DJANGO_SECRET_KEY")
+    line(
+        OK if len(sk) >= 16 else BAD,
+        "DJANGO_SECRET_KEY",
+        f"{len(sk)}자" if sk else "없음 — Django 가 기동을 멈춘다 (D-41)",
+        "" if len(sk) >= 16 else "python scripts/setup_env.py",
+    )
+
+    inf = _v("INFERENCE_INTERNAL_URL")
+    if not inf:
+        line(WARN, "INFERENCE_INTERNAL_URL", "없음 — 기본값 :8001 을 쓴다")
+    elif inf.endswith(":8000"):
+        line(BAD, "INFERENCE_INTERNAL_URL", f"{inf} — 8000 은 Django 자기 포트다",
+             "8001 로 고친다 (docs/12 §2)")
+    else:
+        line(OK, "INFERENCE_INTERNAL_URL", inf)
+
+    dj_url, api_url = _v("DJANGO_DATABASE_URL"), _v("DATABASE_URL")
+    if dj_url and dj_url == api_url:
+        # D-104 로 소유자는 Django 지만, FastAPI 라우터를 폐기하기 전까지는
+        # 같은 DB 를 가리키면 pets/diary 에서 스키마가 부딪힌다.
+        line(BAD, "DB 분리", "DJANGO_DATABASE_URL 이 DATABASE_URL 과 같다",
+             "migrate 가 끝까지 못 돈다 — 다른 파일로 나눈다 (D-104 · 7b 에서 합침)")
+    elif dj_url:
+        line(OK, "DB 분리", "웹앱 DB 가 따로 있다")
+    else:
+        line(WARN, "DJANGO_DATABASE_URL", "없음 — settings 기본값을 쓴다")
+
+    # 마이그레이션이 끝까지 돌았나 — `pets`·`diary_entries` 가 D-104 완료 판정이다.
+    if dj_url and not dj_url.startswith("sqlite"):
+        line(WARN, "마이그레이션", "외부 DB — 직접 확인한다")
+        return
+    f = ROOT / "webapp.sqlite3"
+    if not f.exists() or f.stat().st_size == 0:
+        line(BAD, "마이그레이션", "웹앱 DB 가 없다", "python manage.py migrate")
+        return
+    try:
+        import sqlite3
+
+        with sqlite3.connect(str(f)) as con:
+            names = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    except Exception as e:
+        line(WARN, "마이그레이션", f"읽을 수 없음 ({type(e).__name__})")
+        return
+    missing = {"pets", "diary_entries"} - names
+    if missing:
+        line(BAD, "마이그레이션", f"{' '.join(sorted(missing))} 표가 없다",
+             "python manage.py migrate  (D-104 완료 판정)")
+    else:
+        line(OK, "마이그레이션", f"표 {len(names)}개")
+
+
+def check_docker() -> None:
+    """nginx 를 띄울 수 있는가 — **실행 파일 · 형제 파일 · 엔진** 셋을 본다.
+
+    2026-08-26 에 이 셋이 차례로 걸렸다. 하나씩 걸릴 때마다 원인을 짐작하느라
+    네 번을 돌아섰다 — **한 번에 다 보여 주면 한 번에 끝난다.**
+
+    탐색 경로는 런처의 `checks.find_docker()` 가 단일 출처다 (D-22 ·
+    `scripts/freeze_baseline.py` 가 `checks.in_venv()` 를 부르는 것과 같은 방식).
+    """
+    section("Docker (nginx 용)")
+    launcher = ROOT / "PetTriage_Launcher"
+    if not launcher.exists():
+        line(WARN, "런처", "없음 — 탐색 경로를 확인할 수 없다")
+        return
+    sys.path.insert(0, str(launcher))
+    try:
+        from checks import find_docker
+    except Exception as e:  # pragma: no cover
+        line(WARN, "런처 checks", f"임포트 실패 ({type(e).__name__})")
+        return
+    finally:
+        sys.path.remove(str(launcher))
+
+    dk = find_docker()
+    if not dk:
+        line(
+            WARN, "docker", "없음",
+            "Docker Desktop 설치. 없어도 [5]는 2번(Django 만)으로 돈다",
+        )
+        return
+    if shutil.which("docker"):
+        line(OK, "docker", "PATH 에 있음")
+    else:
+        line(WARN, "docker", dk,
+             "PATH 밖이다. PowerShell 에서 직접 칠 때만 걸린다 — 런처는 절대 경로로 부른다")
+
+    # 🔴 docker 는 자격 증명 헬퍼를 **PATH 에서** 찾는다. 실행 파일만 찾아 주고
+    #    형제를 안 찾아 주면 이미지 받기가 죽는다 — 그런데 오류는 자격 증명 이야기라
+    #    엔진이 꺼진 줄 알고 엉뚱한 곳을 뒤지게 된다 (2026-08-26).
+    helper = Path(dk).with_name("docker-credential-desktop.exe")
+    if helper.exists():
+        line(OK, "자격 증명 헬퍼", "같은 폴더에 있음")
+    else:
+        line(WARN, "자격 증명 헬퍼", "못 찾음 — 이미지 받기가 실패할 수 있다")
+
+    try:
+        r = subprocess.run(
+            [dk, "info", "--format", "{{.ServerVersion}}"],
+            capture_output=True, text=True, timeout=15,
+            env={**os.environ, "PATH": os.environ.get("PATH", "") + ";" + str(Path(dk).parent)},
+        )
+    except Exception as e:
+        line(WARN, "엔진", f"확인 실패 ({type(e).__name__})")
+        return
+    if r.returncode == 0 and r.stdout.strip():
+        line(OK, "엔진", f"running ({r.stdout.strip()})")
+    else:
+        line(WARN, "엔진", "응답 없음", "Docker Desktop 앱을 실행한다 (고래 아이콘)")
+
+
 def main() -> int:
     print("=" * 60)
     print("  환경 점검 — 새 기계에서 돌 준비가 됐나")
@@ -305,6 +446,8 @@ def main() -> int:
     check_config()
     check_secrets()
     check_tables()
+    check_webapp()
+    check_docker()
     check_index()
     check_model_cache()
     check_git()

@@ -1,3 +1,16 @@
-from django.db import models
+"""계정 앱 — **모델을 정의하지 않는다.**
 
-# Create your models here.
+🔒 **D-104 (2026-08-26 확정)** — 계정은 Django 기본 `auth.User` 를 쓴다.
+`settings.AUTH_USER_MODEL` 을 설정하지 않는 것이 그 결정의 구현이다.
+
+🔴 **여기에 커스텀 User 를 추가하지 않는다.** 추가하려면 D-104 를 먼저 뒤집어야 하고,
+그것은 마이그레이션이 한 번이라도 적용된 뒤에는 **연결된 표를 전부 다시 짜는 일**이 된다.
+
+- 왜 기본 User 인가 — 3차의 문자열 UUID 스키마와 1:1 로 맞춰서 얻는 이득이 4차 산출물
+  어디에도 필요하지 않았고, 옮길 대상이 **시연용 가상 데이터**였다
+  (`docs/archive-3rd/01_데이터-수집및전처리.md` §13).
+- `pets.Pet.user` · `diary.DiaryEntry.user` 는 `settings.AUTH_USER_MODEL` 을 가리키므로
+  이 파일이 비어 있는 한 자동으로 `auth.User` 다.
+
+근거: `docs/14_전환설계.md` D-104 · `docs/코드검토_2026-08-24_팀원머지.md` §3
+"""
