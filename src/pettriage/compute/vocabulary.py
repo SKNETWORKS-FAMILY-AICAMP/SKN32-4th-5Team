@@ -396,6 +396,7 @@ def resolve_substance(surface: str, species: str | None = None) -> Resolution:
         return Resolution(surface=s, name=None, how="모호", candidates=near)
     return Resolution(surface=s, name=None, how="없음")
 
+
 def resolve_substance_lenient(surface: str, species: str | None = None) -> Resolution:
     """`resolve_substance` 가 **⑤없음** 을 낼 때만 표기 교정을 한 번 더 시도한다.
 
