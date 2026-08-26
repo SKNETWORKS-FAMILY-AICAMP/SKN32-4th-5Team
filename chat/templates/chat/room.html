@@ -25,6 +25,11 @@
   .risk-row.caution .risk-dot{ background:var(--amber); } .risk-row.caution{ color:#8a5c10; }
   .risk-row.danger .risk-dot{ background:var(--clay); }   .risk-row.danger{ color:var(--clay); }
   .risk-row.info .risk-dot{ background:#8b8578; }         .risk-row.info{ color:#6b6558; }
+  .typing-dots{ display:inline-flex; align-items:center; gap:4px; }
+  .typing-dots span{ width:6px; height:6px; border-radius:50%; background:#8b8578; animation:typing-bounce 1.2s infinite ease-in-out; }
+  .typing-dots span:nth-child(2){ animation-delay:0.15s; }
+  .typing-dots span:nth-child(3){ animation-delay:0.3s; }
+  @keyframes typing-bounce{ 0%,60%,100%{ transform:translateY(0); opacity:0.5; } 30%{ transform:translateY(-4px); opacity:1; } }
 
   .explain{ font-size:13.5px; line-height:1.7; color:var(--ink); margin-bottom:10px; }
   .guess-note{ font-size:11.5px; line-height:1.6; color:var(--ink-soft);
@@ -184,7 +189,7 @@ function addLoadingBubble(){
   const row = document.createElement("div");
   row.className = "bubble-row bot";
   row.id = "loadingBubble";
-  row.innerHTML = `<div class="bubble"><span class="risk-row info"><span class="risk-dot"></span>확인하고 있어요…</span></div>`;
+  row.innerHTML = `<div class="bubble"><span class="risk-row info"><span class="risk-dot"></span>확인하고 있어요<span class="typing-dots"><span></span><span></span><span></span></span></span></div>`;
   chatLog.appendChild(row);
   scrollToBottom();
 }
