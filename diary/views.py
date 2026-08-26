@@ -158,7 +158,27 @@ def _summarize_via_inference(
         return "요약 서비스에 연결할 수 없습니다. 기록 원본은 아래에서 확인해 주세요.", "code"
 
 
-def _detect_weight_change(rows: list[dict]) -> dict | None:
+def _is_juvenile(age: str) -> bool:
+    """`diary.html`의 `isJuvenile()`과 같은 판단 — "개월" 표기거나 나이 숫자가 1 미만.
+
+    성장기 판단 자체는 이 프로젝트에 이미 있었다(절대 체중 범위 체크용). 체중
+    급변 감지에도 같은 기준을 그대로 쓴다 — 실제로 찾아보니 신생아 강아지·
+    새끼 고양이·부화 직후 앵무새 새끼는 **하루에 5~10%씩 체중이 느는 게 정상**이다
+    (2026-08-26 확인, pawsinwork.com·hari.ca 등). 이 알림의 임계값(5~10%)이
+    성장기엔 아예 의미가 없어진다는 뜻이라, 새 숫자를 만드는 대신 이 기간엔
+    알림 자체를 끈다.
+    """
+    if not age:
+        return False
+    if "개월" in age:
+        return True
+    try:
+        return float(age) < 1
+    except ValueError:
+        return False
+
+
+def _detect_weight_change(rows: list[dict], age: str = "") -> dict | None:
     """가장 최근 두 체중 기록을 비교해 급변 여부를 2단계(주의·병원)로 판정한다.
 
     `diary.html`의 `renderWeightStatus()`는 **절대 범위**(품종·크기별 정상 체중대)를
@@ -168,6 +188,9 @@ def _detect_weight_change(rows: list[dict]) -> dict | None:
     기록이 2건 미만이면(비교 불가) `None`을 돌려준다 — 폴백을 숨기지 않는
     `report.py` 태도와 같다.
     """
+    if _is_juvenile(age):
+        return None
+
     weighed = [r for r in rows if r["weight_kg"] is not None]
     if len(weighed) < 2:
         return None
@@ -225,7 +248,7 @@ class ReportView(APIView):
 
         rows = [_row_to_dict(e) for e in entries]
         summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
-        weight_alert = _detect_weight_change(rows)
+        weight_alert = _detect_weight_change(rows, pet.age)
 
         return Response(
             {
