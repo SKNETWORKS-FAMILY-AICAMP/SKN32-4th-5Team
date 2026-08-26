@@ -75,7 +75,7 @@ from __future__ import annotations
 import csv
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -395,6 +395,31 @@ def resolve_substance(surface: str, species: str | None = None) -> Resolution:
     if near:
         return Resolution(surface=s, name=None, how="모호", candidates=near)
     return Resolution(surface=s, name=None, how="없음")
+
+def resolve_substance_lenient(surface: str, species: str | None = None) -> Resolution:
+    """`resolve_substance` 가 **⑤없음** 을 낼 때만 표기 교정을 한 번 더 시도한다.
+
+    ④모호 에는 붙이지 않는다 — 후보가 둘 이상인 것에서 하나를 고르면 그게
+    진단이다 (D-11). 교정은 **후보가 아예 없을 때** 놓는 마지막 다리다.
+
+    실측 (2026-08-26) — `초콜렛` 은 별칭·부분일치·임베딩이 모두 뚫려
+    `/api/ask` 가 refused 를 냈다. `초콜릿` 은 level 3 (CALL_NOW) 이었다.
+    한 글자 차이로 응급 물질을 통째로 놓쳤다.
+    """
+    from .spelling import correct
+
+    base = resolve_substance(surface, species)
+    if base.name is not None or base.candidates:
+        return base
+
+    fixed = correct(surface, known_substances())
+    if fixed is None:
+        return base
+
+    upgraded = resolve_substance(fixed.name, species)
+    if upgraded.name is None:
+        return base
+    return replace(upgraded, surface=surface, how="교정")
 
 
 def _near(surface: str, species: str | None) -> tuple[str, ...]:

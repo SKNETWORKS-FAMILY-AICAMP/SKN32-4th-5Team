@@ -185,10 +185,10 @@ def set_substance(slots: Slots, name: str | None, species: str | None = None) ->
     옮기지 않으면 `프라이팬 → PTFE` 같은 도약이 확정처럼 나가고, 그것이 환각이다.
     `tests/todo/test_graph_nodes.py` 가 노드 구현이 옮기는지 본다.
     """
-    from ..compute.vocabulary import resolve_substance
+    from ..compute.vocabulary import resolve_substance_lenient
 
     out: Slots = dict(slots)  # type: ignore[assignment]
-    r = resolve_substance(name or "", species or slots.get("species"))
+    r = resolve_substance_lenient(name or "", species or slots.get("species"))
     if r.name is None:
         out.pop("substance", None)
         if r.surface:

@@ -160,12 +160,12 @@ def _resolvable(surface: str, species: str | None) -> bool:
     ⚠️ `mention_in` 을 여기서 부르지 않는다. 그 함수는 **문장**을 훑는 것이라
        표면형에 쓰면 부분 매칭이 터진다 — 2026-08-03 D-87 사고가 그것이었다.
     """
-    from ...compute.vocabulary import resolve_substance
+    from ...compute.vocabulary import resolve_substance_lenient
 
-    res = resolve_substance(surface, species)
+    res = resolve_substance_lenient(surface, species)
     if res.name or res.candidates:
         return True
-    return bool(species and resolve_substance(surface, None).name)
+    return bool(species and resolve_substance_lenient(surface, None).name)
 
 
 def _llm_slots(question: str) -> dict | None:
@@ -328,12 +328,12 @@ def extract_slots(state: GraphState) -> GraphState:
     #     고양이에는 **근거가 없는 것**이지 물질을 모르는 것이 아니다.
     #     되물어도 답이 안 나온다. 응급 상황에서 못 쓸 질문은 거절보다 나쁘다
     if surface and "substance" not in merged:
-        from ...compute.vocabulary import resolve_substance
+        from ...compute.vocabulary import resolve_substance_lenient
 
-        res = resolve_substance(surface, sp)
+        res = resolve_substance_lenient(surface, sp)
         if res.candidates:
             extras["substance_candidates"] = list(res.candidates)
-        elif sp and resolve_substance(surface, None).name:
+        elif sp and resolve_substance_lenient(surface, None).name:
             # 표면형은 잡혔는데 종 필터에서 떨어진 경우도 같다.
             extras["off_species_substance"] = surface
         elif not _is_vague(surface):
