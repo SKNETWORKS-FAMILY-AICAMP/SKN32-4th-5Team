@@ -315,8 +315,6 @@ class GraphEngine:
 
         if status == "clarify":
             session.clarify_turns = state.get("clarify_turns", 1)
-            if status == "clarify":
-                session.clarify_turns = state.get("clarify_turns", 1)
             return AskResponse(
                 status="clarify",
                 session_id=session.session_id,
