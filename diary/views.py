@@ -38,6 +38,9 @@ log = logging.getLogger(__name__)
 #: 전송량 절감 효과가 준다.
 _NOTE_CHARS_FOR_SUMMARY = 300
 
+#: 직전 체중 대비 이 비율(%) 이상 바뀌면 "급변"으로 본다.
+_WEIGHT_CHANGE_ALERT_THRESHOLD_PCT = 10.0
+
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
 class DiaryPageView(LoginRequiredMixin, TemplateView):
@@ -147,6 +150,42 @@ def _summarize_via_inference(
         return "요약 서비스에 연결할 수 없습니다. 기록 원본은 아래에서 확인해 주세요.", "code"
 
 
+def _detect_weight_change(rows: list[dict]) -> dict | None:
+    """가장 최근 두 체중 기록을 비교해 급변 여부를 판정한다.
+
+    `diary.html`의 `renderWeightStatus()`는 **절대 범위**(품종·크기별 정상 체중대)를
+    보는 화면 로직이고, 이건 **변화율**을 보는 별개 신호다 — 정상 범위 안에서도
+    짧은 기간에 급격히 변하면 그 자체로 이상 신호일 수 있다 (탈수·질병 등).
+
+    기록이 2건 미만이면(비교 불가) `None`을 돌려준다 — 폴백을 숨기지 않는
+    `report.py` 태도와 같다.
+    """
+    weighed = [r for r in rows if r["weight_kg"] is not None]
+    if len(weighed) < 2:
+        return None
+
+    prev, latest = weighed[-2], weighed[-1]
+    if prev["weight_kg"] <= 0:
+        return None
+
+    change_pct = (latest["weight_kg"] - prev["weight_kg"]) / prev["weight_kg"] * 100
+    if abs(change_pct) < _WEIGHT_CHANGE_ALERT_THRESHOLD_PCT:
+        return None
+
+    direction = "증가" if change_pct > 0 else "감소"
+    pct_display = abs(round(change_pct, 1))
+    return {
+        "from_kg": prev["weight_kg"],
+        "to_kg": latest["weight_kg"],
+        "change_pct": round(change_pct, 1),
+        "message": (
+            f"최근 체중이 {pct_display}% {direction}했어요 "
+            f"({prev['weight_kg']}kg → {latest['weight_kg']}kg). "
+            "급격한 변화는 건강 이상 신호일 수 있으니 수의사와 상담해보세요."
+        ),
+    }
+
+
 class ReportView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -169,6 +208,7 @@ class ReportView(APIView):
 
         rows = [_row_to_dict(e) for e in entries]
         summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
+        weight_alert = _detect_weight_change(rows)
 
         return Response(
             {
@@ -178,5 +218,6 @@ class ReportView(APIView):
                 "timeline": rows,
                 "summary": summary,
                 "summary_by": summary_by,
+                "weight_alert": weight_alert,
             }
         )
