@@ -1,10 +1,22 @@
 import uuid
 
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
+
+from pettriage.privacy.images import ImageRejected, new_filename, sanitize
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
 
 from .models import Pet
+
+
+def _gate(upload) -> bytes:
+    """업로드를 관문에 통과시킨다. 거절 사유는 **사용자에게 그대로 보여도 되는 문장**이다.
+
+    `ImageRejected` 는 여기서 잡지 않고 뷰가 잡아 화면에 그린다 — 저장 경로에서
+    **조용히 넘어가지 않게** 하려는 것이다 (D-58).
+    """
+    return sanitize(upload.read())
 
 
 @login_required
@@ -46,13 +58,21 @@ def pet_create(request):
                 notes=request.POST.get("notes", "").strip(),
                 weight_kg=float(weight_raw) if weight_raw else None,
             )
-            if request.FILES.get("photo"):
-                pet.photo = request.FILES["photo"]
-            pet.save()
-
-            if request.POST.get("action") == "add_another":
-                return redirect("pets:create")
-            return redirect(f"/chat/?pet_id={pet.pet_id}")
+            try:
+                if request.FILES.get("photo"):
+                    # 🔒 관문을 통과한 **새 이미지**만 저장한다 (D-43 · privacy/images.py).
+                    #    받은 것을 그대로 두면 EXIF 의 GPS 좌표가 서버에 남는다.
+                    blob = _gate(request.FILES["photo"])
+                    pet.photo.save(new_filename(), ContentFile(blob), save=False)
+            except ImageRejected as e:
+                # 사진 때문에 **입력한 나머지를 잃게 하지 않는다.** 사유만 보여 주고
+                # 같은 화면을 다시 그린다.
+                error = str(e)
+            else:
+                pet.save()
+                if request.POST.get("action") == "add_another":
+                    return redirect("pets:create")
+                return redirect(f"/chat/?pet_id={pet.pet_id}")
 
     return render(request, "pets/pet_form.html", {"error": error})
 
@@ -84,13 +104,18 @@ def pet_edit(request, pet_id):
             pet.intro = request.POST.get("intro", "").strip()
             pet.notes = request.POST.get("notes", "").strip()
             pet.weight_kg = float(weight_raw) if weight_raw else None
-            if request.POST.get("remove_photo"):
-                pet.photo.delete(save=False)  # 파일도 함께 지운다
-                pet.photo = None
-            elif request.FILES.get("photo"):
-                pet.photo = request.FILES["photo"]
-            pet.save()
-            return redirect("pets:list")
+            try:
+                if request.POST.get("remove_photo"):
+                    pet.photo.delete(save=False)  # 파일도 함께 지운다
+                    pet.photo = None
+                elif request.FILES.get("photo"):
+                    blob = _gate(request.FILES["photo"])
+                    pet.photo.save(new_filename(), ContentFile(blob), save=False)
+            except ImageRejected as e:
+                error = str(e)
+            else:
+                pet.save()
+                return redirect("pets:list")
 
     return render(request, "pets/pet_form.html", {"pet": pet, "error": error})
 
