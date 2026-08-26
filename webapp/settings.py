@@ -172,6 +172,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 INFERENCE_INTERNAL_URL = os.environ.get("INFERENCE_INTERNAL_URL", "http://127.0.0.1:8001")
 
 
+# ── 다이어리 체중 급변 알림 (D-103) ──────────────────────────
+# **변화율은 사용자 기록에서 나오지만 임계값은 외부 주장이다.** 그래서 코드가 아니라
+# 설정에 둔다 (D-41). `configs/*.yaml` 이 아니라 여기인 이유는 이것이 **Django 쪽 기능**
+# 이라서다 — 추론 파이프라인 설정과 섞지 않는다. 판정 경로로 옮겨 가면 그때 같이 옮긴다.
+#
+#   5% 미만          — 알리지 않는다 (정상 범위)
+#   5% 이상 10% 미만 — "당분간 지켜봐 주세요"
+#   10% 이상          — "수의사와 상담해보세요"
+DIARY_WEIGHT_ALERT_WATCH_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_WATCH_PCT", "5.0"))
+DIARY_WEIGHT_ALERT_VET_PCT = float(os.environ.get("DIARY_WEIGHT_ALERT_VET_PCT", "10.0"))
+
+
 # ── DRF ──────────────────────────────────────────────────
 # ⚠️ 임시 — 세션·Basic 인증만 켜져 있다. JWT냐 세션이냐는 docs/14 §7 미결이라
 # 계정 앱이 정해지면 여기부터 바뀐다. 지금은 Django 로그인(관리자 계정 등)이 되면

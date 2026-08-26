@@ -28,6 +28,8 @@
   .chart-meta .delta{ font-size:11.5px; color: var(--moss-dark); font-weight:700; background: var(--moss-soft); padding:3px 8px; border-radius:999px; }
   .chart-meta .delta.down{ color:#8a5c10; background: var(--honey-soft); }
 
+  .streak-desc{ font-size:11px; color: var(--ink-soft); line-height:1.6; margin-top:2px; }
+
   .weight-status{ display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
   .weight-status.show{ display:block; }
   .weight-status .ws-badge{
@@ -142,12 +144,38 @@
     .split{ grid-template-columns:1fr; overflow:auto; }
     .left-pane{ border-right:none; border-bottom:1px solid var(--line); }
   }
+
+  /* ============ 체중 급변 알림 (우측 하단 토스트) ============ */
+  .weight-alert-toast{
+    position:fixed; right:24px; bottom:24px; width:300px; max-width:calc(100vw - 48px);
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    box-shadow:0 20px 40px -12px rgba(44,42,38,0.28);
+    padding:16px; box-sizing:border-box; display:none; gap:10px; align-items:flex-start; z-index:40;
+  }
+  .weight-alert-toast.show{ display:flex; }
+  .weight-alert-toast .wa-ic{ width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .weight-alert-toast.watch .wa-ic{ background: var(--honey-soft); color:#8a5c10; }
+  .weight-alert-toast.vet .wa-ic{ background: var(--clay-soft); color: var(--clay); }
+  .weight-alert-toast .wa-body{ flex:1; display:flex; flex-direction:column; gap:3px; padding-top:2px; min-width:0; }
+  .weight-alert-toast .wa-title{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:13.5px; }
+  .weight-alert-toast.watch .wa-title{ color:#8a5c10; }
+  .weight-alert-toast.vet .wa-title{ color: var(--clay); }
+  .weight-alert-toast .wa-msg{ font-size:12.5px; color: var(--ink-soft); line-height:1.55; }
+  .weight-alert-toast .wa-close{ background:none; border:none; cursor:pointer; padding:2px; color: var(--ink-faint); flex-shrink:0; line-height:0; }
 {% endblock %}
 
 {% block content %}
 <div class="split">
   <!-- ===== 왼쪽: 체중그래프 + 캘린더 (고정) ===== -->
   <div class="left-pane">
+    <div class="panel-card">
+      <h3>🔥 연속 기록</h3>
+      <div class="chart-meta">
+        <div class="cur" id="streakCur">- <small>일째</small></div>
+      </div>
+      <div class="streak-desc" id="streakDesc"></div>
+    </div>
+
     <div class="panel-card">
       <h3>📈 체중 변화</h3>
       <div class="chart-meta">
@@ -213,6 +241,9 @@
   </div>
 </div>
 
+<!-- ============ 체중 급변 알림 ============ -->
+<div class="weight-alert-toast" id="weightAlertToast"></div>
+
 <script>
 /* ---- 인증: Django 세션 쿠키 + CSRF 헤더 ---- */
 function getCookie(name){
@@ -276,6 +307,8 @@ function pretty(dateStr){
 /* ---------------- 기록 데이터 ---------------- */
 let entriesByDate = {};
 let photosByDate = {};
+let weightAlert = null;
+let streak = 0;
 
 const today = new Date();
 const todayStr = fmt(today);
@@ -294,9 +327,52 @@ async function loadRecords(){
       if(!dateStr) return;
       entriesByDate[dateStr] = row;
     });
+    weightAlert = data.weight_alert || null;
+    streak = data.streak || 0;
   } catch(e){
     console.error('기록을 불러오지 못했어요', e);
   }
+}
+
+/* ---------------- 연속 기록(스트릭) ---------------- */
+function renderStreak(){
+  const curEl = document.getElementById('streakCur');
+  const descEl = document.getElementById('streakDesc');
+  if(streak > 0){
+    curEl.innerHTML = `${streak} <small>일째</small>`;
+    descEl.textContent = '꾸준히 기록하고 있어요, 정말 잘하고 있어요!';
+  } else {
+    curEl.innerHTML = '- <small>일째</small>';
+    descEl.textContent = '오늘 기록을 남기면 스트릭이 시작돼요.';
+  }
+}
+
+/* ---------------- 체중 급변 알림 (우측 하단) ---------------- */
+function renderWeightAlert(){
+  const box = document.getElementById('weightAlertToast');
+  if(!weightAlert){
+    box.classList.remove('show', 'watch', 'vet');
+    return;
+  }
+  const isVet = weightAlert.level === 'vet';
+  box.className = 'weight-alert-toast show ' + (isVet ? 'vet' : 'watch');
+  box.innerHTML = `
+    <div class="wa-ic">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4M12 16.5h.01M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.3 2.25h17.76a1.5 1.5 0 0 0 1.3-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="wa-body">
+      <div class="wa-title">${isVet ? '병원 방문 권장' : '주의'}</div>
+      <div class="wa-msg">${weightAlert.message}</div>
+    </div>
+    <button class="wa-close" id="weightAlertClose" aria-label="닫기">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  `;
+  document.getElementById('weightAlertClose').addEventListener('click', ()=>{
+    box.classList.remove('show');
+  });
 }
 
 /* ---------------- 적정 체중 범위 ---------------- */
@@ -696,6 +772,8 @@ function renderFormMode(entry){
       renderCalendar();
       renderWeightChart();
       renderRight();
+      renderWeightAlert();
+      renderStreak();
     } catch(e){
       hint.textContent = '저장 실패 — ' + e.message;
       btn.disabled = false;
@@ -771,6 +849,8 @@ document.getElementById('confirmDownload').addEventListener('click', async ()=>{
   renderWeightChart();
   renderCalendar();
   renderRight();
+  renderWeightAlert();
+  renderStreak();
 })();
 </script>
 {% endblock %}

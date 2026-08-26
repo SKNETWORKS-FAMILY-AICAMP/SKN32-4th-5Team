@@ -153,7 +153,10 @@ GROUPS: list[dict] = [
         "핵심": "PetTriage_발표자료_3차.pptx",
         "한줄": "17장 — WHY · HOW 6장 · PROOF 4장 · 한계",
         "items": [
-            ("docs/archive-3rd/발표자료/PetTriage_발표자료_3차.pptx", "PetTriage_발표자료_3차.pptx"),
+            (
+                "docs/archive-3rd/발표자료/PetTriage_발표자료_3차.pptx",
+                "PetTriage_발표자료_3차.pptx",
+            ),
             ("docs/archive-3rd/발표자료/PetTriage_발표자료_3차.pdf", "PetTriage_발표자료_3차.pdf"),
         ],
     },
