@@ -5,7 +5,7 @@
 소유자 확인은 pet 조회 시 `(pet_id, user)`로 붙는다 — `pet_id`만으로 찾으면
 남의 것도 찾아지므로 D-52 원칙을 그대로 따른다.
 
-`GET /api/report`는 2026-08-25 오한빈과 확정한 3안대로다 — Django는 DB 조회만
+`GET /api/report`는 2026-08-25 오한빈과 확정한 **A안**(`14 §2.4`)대로다 — Django는 DB 조회만
 하고, 집계 문장화(LLM)는 FastAPI의 `report.summarize_period()`를 그대로
 내부 호출로 위임한다. `report.py`는 한 줄도 고치지 않는다.
 """
@@ -66,12 +66,14 @@ class DiaryPageView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        pet_id = self.request.GET.get("pet_id")
+        pet_id = self.request.GET.get("pet_id") or self.request.session.get("active_pet_id")
         pet = None
         if pet_id:
             pet = Pet.objects.filter(pet_id=pet_id, user=self.request.user).first()
         if pet is None:
             pet = self.request.user.pets.first()
+        if pet is not None:
+            self.request.session["active_pet_id"] = str(pet.pet_id)
         ctx["pet"] = pet
         # 🔴 성장기 판단은 **서버가 한다.** 화면이 따로 계산하면 두 벌이 되고,
         #    2026-08-27 까지 실제로 두 벌이 서로 다른 답을 내고 있었다

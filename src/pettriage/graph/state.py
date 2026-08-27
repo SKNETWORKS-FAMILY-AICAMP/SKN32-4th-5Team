@@ -70,6 +70,10 @@ class GraphState(TypedDict, total=False):
 
     # ── 입력 ────────────────────────────────────────────────
     question: str
+    #: **이전 턴의 발화들** (최근 것이 앞). 되묻기 답변은 앞 턴과 함께 읽어야 한다 —
+    #: *"포도"* 한 마디만 보면 무엇에 대한 답인지 알 수 없다.
+    #: 비어 있으면(단일 턴) 동작이 이전과 완전히 같다 — 골든셋이 그 경로다 (D-102).
+    question_history: list[str]
     session_id: str
     pet_id: str
 
@@ -238,6 +242,7 @@ def initial_state(question: str, session_id: str, **kw: Any) -> GraphState:
     """빈 상태. **카운터는 반드시 0으로 시작한다** — 없으면 루프 상한이 안 먹는다."""
     st: GraphState = {
         "question": question,
+        "question_history": [],
         "session_id": session_id,
         "slots": {},
         "missing_slots": [],

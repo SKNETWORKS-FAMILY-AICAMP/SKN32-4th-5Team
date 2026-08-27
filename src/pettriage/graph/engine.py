@@ -241,8 +241,23 @@ class GraphEngine:
         if session.amount_g is not None:
             slots["amount_g"] = session.amount_g
 
+        # 🔴 **이전 턴을 함께 넘긴다.**
+        #
+        #    `session.merge()` 가 방금 이번 발화를 `question_history` 끝에 넣었으므로,
+        #    앞 턴들은 `[:-1]` 이다. 최근 것이 앞에 오게 뒤집는다.
+        #
+        #    이게 없으면 되묻기 답변이 맥락을 잃는다 —
+        #      T1 "0알 먹었어" → 되묻기   T2 "포도" → 그래프가 보는 건 "포도" 뿐
+        #    그래서 다시 되묻고, 상한을 넘겨 **제대로 답할수록 거절당한다.**
+        #    (2026-08-27 권소라 TC-FR-CHAT-005 에서 드러났다)
+        #
+        #    `StubEngine._content_of` 는 처음부터 이렇게 하고 있었다.
+        #    **스텁이 진짜 엔진보다 대화를 잘 이어받는 상태였다.**
+        prior = list(reversed(session.question_history[:-1]))
+
         return initial_state(
             question=req.question,
+            question_history=prior,
             session_id=session.session_id,
             pet_id=req.pet_id or "",
             slots=slots,
@@ -314,7 +329,21 @@ class GraphEngine:
         audit = self._audit(state)
 
         if status == "clarify":
-            session.clarify_turns = state.get("clarify_turns", 1)
+            # 🔴 **진전이 있었으면 되묻기 예산을 되돌린다.**
+            #
+            #    `session.merge()` 도 같은 일을 하지만 `SLOTS`(종·펫·체중·양) 넷만 본다.
+            #    **물질은 거기 없다** — 그래서 *"뭘 먹었나요?"* → *"포도"* 로 제대로
+            #    답해도 진전으로 안 세었고, 상한에 걸려 거절됐다.
+            #    `merge()` 의 docstring 이 막겠다고 적은 바로 그 일이 물질에서 일어났다.
+            #
+            #    그래프가 계산한 `missing_slots` 가 줄었는지 보면 **어떤 슬롯이든** 잡힌다.
+            new_missing = list(state.get("missing_slots") or [])
+            prev = set(session.last_missing)
+            if prev and set(new_missing) < prev:
+                session.clarify_turns = 0
+            else:
+                session.clarify_turns = state.get("clarify_turns", 1)
+            session.last_missing = new_missing
             return AskResponse(
                 status="clarify",
                 session_id=session.session_id,
@@ -328,6 +357,9 @@ class GraphEngine:
             )
 
         if status == "refused":
+            # 거절도 이 왕복의 끝이다 — 되묻기 상태를 남겨 두면 다음 대화에 샌다.
+            session.clarify_turns = 0
+            session.last_missing = []
             return self._refused(
                 session,
                 state.get("refusal_reason", "판정불가"),
@@ -338,8 +370,9 @@ class GraphEngine:
                 **audit,
             )
 
-        # answered — 성공한 경우 세션 되묻기 카운터 리셋
+        # answered — 성공했으니 되묻기 상태를 비운다
         session.clarify_turns = 0
+        session.last_missing = []
 
         slots = state.get("slots") or {}
         substance = slots.get("substance")

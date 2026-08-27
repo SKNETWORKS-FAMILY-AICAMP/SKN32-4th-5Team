@@ -54,6 +54,12 @@ class Session:
     #: 그 답이 두 번째 턴에 오는데 첫 턴 질문만 보면 영영 못 찾는다.
     #: 상한은 `MAX_CLARIFY_TURNS + 1` 이면 충분하다 — 무한히 쌓지 않는다.
     question_history: list[str] = field(default_factory=list)
+    #: **직전 되묻기에서 무엇이 비어 있었나.** 다음 턴에 그것이 줄었으면 진전이다.
+    #:
+    #: `merge()` 는 `SLOTS` 넷만 보는데 **물질은 거기 없다** — 그래서 사용자가
+    #: *"포도요"* 라고 답해도 진전으로 안 세어 되묻기 예산이 안 돌아왔다.
+    #: 그래프가 계산한 `missing_slots` 를 견주면 **어떤 슬롯이든** 진전을 잡는다.
+    last_missing: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.monotonic)
     touched_at: float = field(default_factory=time.monotonic)
 

@@ -222,6 +222,14 @@ def extract_slots(state: GraphState) -> GraphState:
     intent = state.get("intent", "general")
     existing = dict(state.get("slots") or {})
 
+    # 🔴 **되묻기 답변은 앞 턴과 함께 읽는다.**
+    #    *"포도"* 한 마디만 보면 무엇에 대한 답인지 알 수 없다.
+    #
+    #    ⚠️ 이력이 비면 `context is question` 이라 **단일 턴 동작이 이전과 완전히 같다.**
+    #       골든셋 60건이 전부 단일 턴이므로 기준선이 흔들리지 않는다 (D-102).
+    prior = state.get("question_history") or []
+    context = " ".join([question, *prior]) if prior else question
+
     # 새 발화에서 추출한 슬롯. **값이 있을 때만 키를 넣는다** (D-10 · 05 §4 ②).
     new_slots: dict = {}
 
@@ -231,7 +239,7 @@ def extract_slots(state: GraphState) -> GraphState:
     # **`slot_llm_used` 를 여기 두지 않는다.** 상태에만 남고 아무도 안 읽었다.
     # 같은 사실을 `graph/fallbacks.py` 가 다섯 태스크에 대해 한 방식으로 남기고,
     # 그것은 응답과 평가 리포트까지 나간다 (D-22 — 두 곳에 적지 않는다).
-    llm = _llm_slots(question) or {}
+    llm = _llm_slots(context) or {}
 
     # **스키마를 지켰는지 본다** (D-86). 지키지 않았으면 아래 코드가 값을 못 읽는다.
     off = _off_schema_keys(llm)
@@ -244,17 +252,17 @@ def extract_slots(state: GraphState) -> GraphState:
 
     # **정규화가 폴백보다 먼저다** (D-86). 예전에는 `llm.get("species") or 폴백` 이라
     # 모델이 `'개'` 를 내면 truthy 라서 **폴백을 건너뛰고 그대로 버려졌다.**
-    species = _normalize_species(llm.get("species")) or _extract_species(question)
+    species = _normalize_species(llm.get("species")) or _extract_species(context)
     if species:
         new_slots["species"] = species
     elif llm.get("species"):
         log.info("SLOT: 종을 못 올렸다 %r — 폴백도 못 잡았다 (05 §6 ①)", llm.get("species"))
 
-    weight = _as_float(llm.get("weight_kg")) or _extract_weight(question)
+    weight = _as_float(llm.get("weight_kg")) or _extract_weight(context)
     if weight is not None:
         new_slots["weight_kg"] = weight
 
-    amount = _as_float(llm.get("amount_g")) or _extract_amount(question)
+    amount = _as_float(llm.get("amount_g")) or _extract_amount(context)
     if amount is not None:
         new_slots["amount_g"] = amount
 
@@ -281,10 +289,12 @@ def extract_slots(state: GraphState) -> GraphState:
     #
     #   ⚠️ 모호어(`뭔가`)는 내려가지 않는다. 사용자가 *모른다*고 말한 것이고,
     #      문장을 뒤져 물질을 세우면 그게 추정이다 (D-49).
+    #   🔴 **물질은 되묻기 답변으로 오는 대표적인 슬롯이다** — *"뭘 먹었나요?"* → *"포도"*.
+    #      그래서 아래 셋은 `question` 이 아니라 `context`(이번 발화 + 앞 턴)를 본다.
     llm_surface = llm.get("substance")
-    surface = llm_surface or _extract_substance_fallback(question, sp)
+    surface = llm_surface or _extract_substance_fallback(context, sp)
     if llm_surface and not _is_vague(llm_surface) and not _resolvable(llm_surface, sp):
-        inner = _extract_substance_fallback(question, sp)
+        inner = _extract_substance_fallback(context, sp)
         if inner and inner != llm_surface:
             log.info(
                 "SLOT: 표면형 %r 이 폐쇄 목록에 못 오른다 — 문장에서 %r 로 내려간다 (D-88)",
@@ -306,7 +316,7 @@ def extract_slots(state: GraphState) -> GraphState:
     if not surface and sp:
         from ...compute.vocabulary import mention_in
 
-        off = mention_in(question, None, assumptions=False)
+        off = mention_in(context, None, assumptions=False)
         if off:
             extras["off_species_substance"] = off
             log.info("물질 %r 은 코퍼스에 있으나 종 %r 자료가 없다 — 근거없음 (D-68).", off, sp)
