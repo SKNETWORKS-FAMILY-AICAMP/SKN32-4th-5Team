@@ -78,6 +78,34 @@ jobs:
         #  pytest 의 verbosity 는 합산이다 — `-q`(-1) + `-v`(+1) = 0(기본 출력).
         #  `addopts` 는 손대지 않는다. 로컬에서 조용한 것은 그대로 두는 게 낫다.
         run: pytest -v
+      - name: Django 앱 테스트가 **실제로 수집됐는가**
+        # 🔴 `tests/conftest.py` 는 `django` 가 없으면 `tests/django_apps/` 를
+        #    **통째로 건너뛴다.** `db-deps`·`rag-deps` 잡에는 그게 맞다 — 그 잡들은
+        #    의존성 조합을 보는 것이지 화면을 보는 것이 아니다.
+        #
+        #    그런데 그 관대함이 **이 잡에까지 적용되면** Django 검사가 조용히 0건이
+        #    되고 CI 는 초록으로 남는다. `django` extra 를 실수로 빼거나
+        #    설치가 깨져도 아무도 모른다 — 04 §8 이 금하는 **말 없는 검사 축소**다.
+        #
+        #    그래서 여기서 **수를 센다.** 위 `pytest -v` 가 초록인 것만으로는
+        #    "돌았다" 를 증명하지 못한다.
+        run: |
+          python - <<'PY'
+          import re, subprocess, sys
+          r = subprocess.run(
+              [sys.executable, "-m", "pytest", "tests/django_apps/", "--collect-only", "-q"],
+              capture_output=True, text=True,
+          )
+          print(r.stdout[-500:] or r.stderr[-500:])
+          n = sum(int(m) for m in re.findall(r":\s*(\d+)\s*$", r.stdout, re.M))
+          if n < 16:
+              sys.exit(
+                  f"Django 앱 테스트가 {n} 건이다 — 16 건 이상이어야 한다.\n"
+                  "  · django extra 가 안 깔렸나 (tests/conftest.py 가 폴더를 건너뛴다)\n"
+                  "  · 테스트를 지웠나 — 의도한 것이면 이 숫자도 같이 내린다"
+              )
+          print(f"OK — Django 앱 테스트 {n} 건 수집")
+          PY
       - name: 콘솔 스크립트가 설치 후 실제로 도는가
         # 엔트리포인트는 파일 경로 실행으로는 검증되지 않는다.
         # `scripts/` 처럼 패키지 밖 모듈을 가리키면 여기서 깨진다.
