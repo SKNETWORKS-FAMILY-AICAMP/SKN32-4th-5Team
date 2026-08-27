@@ -38,6 +38,10 @@
 
 ALB(ACM 인증서) → EC2 의 nginx → Django · FastAPI · systemd 로 상시 기동
 
+⏳ **발표·심사 기간에만 열어 둡니다.** 내린 뒤에는 이 주소가 응답하지 않습니다 —
+구성과 검증 기록은 [§4차 — AWS 배포](#4차--aws-배포) 에 남으므로, 서버가 꺼져도
+**무엇을 어떻게 띄웠는지는 저장소만으로 확인**할 수 있습니다.
+
 <br>
 
 [📄 결과 보고서](eval/reports/결과보고서_제출용/2026-08-04_결과보고서.md) ·
@@ -558,6 +562,25 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 sudo cp deploy/nginx/pettriage.conf /etc/nginx/sites-enabled/pettriage
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+### 🔴 내릴 때는 **DNS 를 먼저 지운다**
+
+| 어디까지 닫나 | 위 링크를 누르면 |
+|---|---|
+| EC2 만 중지 | ALB 는 살아 있는데 정상 대상이 없어 **503** |
+| ALB 까지 삭제 | CNAME 이 없는 이름을 가리켜 **DNS 오류** |
+
+**순서를 거꾸로 하면 도메인이 남의 서버를 가리킬 수 있다.** ALB 를 먼저 지우면
+`pettriage.kro.kr` 의 CNAME 이 **없어진 이름을 가리킨 채 남고**, 그 이름을 나중에
+다른 계정의 ALB 가 받으면 우리 주소로 들어온 사람이 그쪽에 닿는다 (dangling DNS).
+이 저장소는 **공개**이고 README 가 그 주소를 링크로 걸고 있으므로 남의 일이 아니다.
+
+    ① 내도메인.한국(kro.kr) 에서 CNAME 레코드 삭제   ← 여기가 먼저다
+    ② ALB · 대상 그룹 삭제
+    ③ EC2 중지 · 종료
+
+내린 뒤에는 위 머리말의 링크도 같이 지운다 — **죽은 링크를 남겨 두지 않는다.**
+`docs/12 §6` 의 구성 기록과 이 절은 남는다. 서버가 꺼져도 **무엇을 했는지는 저장소가 말한다.**
 
 ---
 
