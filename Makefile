@@ -58,6 +58,9 @@ reqs-xlsx:       ## 요구사항정의서 → 제출용 xlsx 재생성 (생성�
 	python scripts/check_requirements.py
 	python scripts/build_requirements_xlsx.py --write
 
+testplan-xlsx:   ## 테스트계획 → 제출용 xlsx 재생성 (생성물이다. 손으로 고치지 않는다)
+	python scripts/build_testplan_xlsx.py --write
+
 rules:           ## 사실 표 → 규칙 테이블 재생성 (생성물이다. 손으로 고치지 않는다)
 	python scripts/build_rule_table.py --write
 

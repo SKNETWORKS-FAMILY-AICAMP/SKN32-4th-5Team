@@ -5,7 +5,7 @@
 소유자 확인은 pet 조회 시 `(pet_id, user)`로 붙는다 — `pet_id`만으로 찾으면
 남의 것도 찾아지므로 D-52 원칙을 그대로 따른다.
 
-`GET /api/report`는 2026-08-25 오한빈과 확정한 3안대로다 — Django는 DB 조회만
+`GET /api/report`는 2026-08-25 오한빈과 확정한 **A안**(`14 §2.4`)대로다 — Django는 DB 조회만
 하고, 집계 문장화(LLM)는 FastAPI의 `report.summarize_period()`를 그대로
 내부 호출로 위임한다. `report.py`는 한 줄도 고치지 않는다.
 """

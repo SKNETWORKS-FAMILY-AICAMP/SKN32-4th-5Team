@@ -1,6 +1,6 @@
 """POST /internal/report/summarize — Django가 보낸 다이어리 rows를 요약한다.
 
-D-99 `GET /api/report` 경계 3안 (2026-08-25, 오한빈 확정): Django는 DB 조회만 하고
+D-99 `GET /api/report` 경계 **A안** (2026-08-25, 오한빈 확정 · `14 §2.4`): Django는 DB 조회만 하고
 `report.py`의 `summarize_period()`는 그대로 재사용한다. 이 파일은 그 재사용을
 위한 얇은 진입점 하나이고, `report.py` 자체는 한 줄도 고치지 않는다.
 

@@ -45,9 +45,12 @@ jobs:
       #  2026-08-24 에 테스트 수(460 vs 589)와 포트(Django/추론 뒤바뀜)가 하루에 둘 다 틀렸고,
       #  포트 쪽은 **막아야 할 포트를 열라는 지시**였다. 사람이 우연히 발견했다.
       - run: make docs-check
-      - name: 요구사항정의서에서 제출용 표를 만들 수 있는가 (생성물 · 기록은 안 한다)
+      - name: 산출물 문서에서 제출용 표를 만들 수 있는가 (생성물 · 기록은 안 한다)
         # 🔴 표 형식이 바뀌면 생성기가 빈 시트를 조용히 뱉는다. 여기서 잡는다.
-        run: python scripts/build_requirements_xlsx.py
+        #    둘 다 표준 라이브러리만 쓴다 — 이 잡은 ruff 밖에 안 깐다.
+        run: |
+          python scripts/build_requirements_xlsx.py
+          python scripts/build_testplan_xlsx.py
 
   test:
     runs-on: ubuntu-latest
