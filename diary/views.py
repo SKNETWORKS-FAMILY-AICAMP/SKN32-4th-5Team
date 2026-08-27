@@ -273,7 +273,8 @@ class ReportView(APIView):
         # 🔴 **요약은 달라고 할 때만 만든다** (`?summary=1`).
         #
         #    이 엔드포인트를 부르는 곳은 둘인데 쓰는 것이 다르다 —
-        #      · `loadRecords()`  화면 열 때·저장할 때·날짜 바꿀 때. timeline·streak·weight_alert 만 쓴다
+        #      · `loadRecords()`  화면 열 때·저장할 때·날짜 바꿀 때.
+        #                         timeline·streak·weight_alert 만 쓴다
         #      · 리포트 다운로드   사용자가 버튼을 누를 때. summary 를 쓴다
         #
         #    그런데 예전에는 **언제나** 요약을 만들었다. 다이어리 화면을 한 번 여는 것만으로

@@ -1,0 +1,14 @@
+[Unit]
+Description=PetTriage Django (Gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/SKN32-4th-5Team
+ExecStart=/home/ubuntu/SKN32-4th-5Team/.venv/bin/gunicorn webapp.wsgi:application --bind 127.0.0.1:8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
