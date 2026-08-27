@@ -267,7 +267,29 @@ class ReportView(APIView):
         entries = qs.order_by("recorded_at")
 
         rows = [_row_to_dict(e) for e in entries]
-        summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
+
+        # 🔴 **요약은 달라고 할 때만 만든다** (`?summary=1`).
+        #
+        #    이 엔드포인트를 부르는 곳은 둘인데 쓰는 것이 다르다 —
+        #      · `loadRecords()`  화면 열 때·저장할 때·날짜 바꿀 때. timeline·streak·weight_alert 만 쓴다
+        #      · 리포트 다운로드   사용자가 버튼을 누를 때. summary 를 쓴다
+        #
+        #    그런데 예전에는 **언제나** 요약을 만들었다. 다이어리 화면을 한 번 여는 것만으로
+        #    LLM 호출이 나가고 **그 결과는 버려졌다.** 2026-08-27 시연 로그에서
+        #    2분 동안 `POST /internal/report/summarize` 가 9번 나갔는데 다운로드는 0번이었다.
+        #
+        #    비용만 문제가 아니다 — 이 호출은 `timeout=30.0` 동기라 **화면이 그만큼 기다렸고**,
+        #    스트릭·체중 그래프는 LLM 과 아무 상관이 없다. 그리고 D-99(추론은 배달을 모른다)를
+        #    거꾸로 세운다 — **배달 쪽 화면 로드가 추론을 깨우고 있었다.**
+        #
+        #    ⚠️ 기간이 비었는지로 가르지 않는다. `loadRecords` 가 마침 빈 기간을 보내지만
+        #       그건 **우연**이고, 다음 사람이 전 기간 다운로드를 만들면 조용히 깨진다.
+        want_summary = request.query_params.get("summary") == "1"
+        if want_summary:
+            summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
+        else:
+            # 빈 문자열이 아니라 이유를 남긴다 — 화면이 "요약이 실패했나" 로 읽지 않게 (D-58).
+            summary, summary_by = "", "skipped"
         weight_alert = _detect_weight_change(rows, pet.age)
 
         all_dates = set(

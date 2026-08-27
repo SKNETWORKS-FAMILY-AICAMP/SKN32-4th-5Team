@@ -820,6 +820,9 @@ document.getElementById('confirmDownload').addEventListener('click', async ()=>{
       pet_id: currentPet.petId,
       period_from: fmt(start),
       period_to: fmt(end),
+      // 요약은 여기서만 필요하다. 화면 로드(loadRecords)는 안 붙인다 —
+      // 붙이면 다이어리를 열 때마다 LLM 호출이 나간다 (diary/views.py ReportView).
+      summary: '1',
     });
     const data = await api('/api/report?' + q, { headers: authHeader() });
 
