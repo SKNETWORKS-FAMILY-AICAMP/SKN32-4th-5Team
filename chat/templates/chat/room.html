@@ -25,6 +25,11 @@
   .risk-row.caution .risk-dot{ background:var(--amber); } .risk-row.caution{ color:#8a5c10; }
   .risk-row.danger .risk-dot{ background:var(--clay); }   .risk-row.danger{ color:var(--clay); }
   .risk-row.info .risk-dot{ background:#8b8578; }         .risk-row.info{ color:#6b6558; }
+  .typing-dots{ display:inline-flex; align-items:center; gap:4px; }
+  .typing-dots span{ width:6px; height:6px; border-radius:50%; background:#8b8578; animation:typing-bounce 1.2s infinite ease-in-out; }
+  .typing-dots span:nth-child(2){ animation-delay:0.15s; }
+  .typing-dots span:nth-child(3){ animation-delay:0.3s; }
+  @keyframes typing-bounce{ 0%,60%,100%{ transform:translateY(0); opacity:0.5; } 30%{ transform:translateY(-4px); opacity:1; } }
 
   .explain{ font-size:13.5px; line-height:1.7; color:var(--ink); margin-bottom:10px; }
   .guess-note{ font-size:11.5px; line-height:1.6; color:var(--ink-soft);
@@ -35,7 +40,13 @@
   .amount-box .ic{ font-size:16px; }
   .amount-box .txt{ font-size:12.5px; color:var(--moss-dark); font-weight:600; }
   .amount-box.warn .txt{ color:#8a5c10; }
-  .source-line{ font-size:11.5px; color:var(--ink-faint); border-top:1px dashed #d8d2c2; padding-top:8px; margin-top:2px; }
+  .sources-details{ margin-top:2px; border-top:1px dashed #d8d2c2; padding-top:8px; }
+  .sources-details summary{ font-size:11.5px; color:var(--ink-faint); cursor:pointer; user-select:none; list-style:none; }
+  .sources-details summary::-webkit-details-marker{ display:none; }
+  .sources-details summary::before{ content:"▸ "; }
+  .sources-details[open] summary::before{ content:"▾ "; }
+  .sources-details[open] summary{ margin-bottom:6px; }
+  .source-line{ font-size:11.5px; color:var(--ink-faint); margin-top:4px; }
   .audit-line{ font-size:10.5px; color:var(--ink-faint); margin-top:8px; font-variant-numeric:tabular-nums; }
   .audit-line .gate{ color:#8a5c10; font-weight:700; }
 
@@ -178,13 +189,28 @@ function addLoadingBubble(){
   const row = document.createElement("div");
   row.className = "bubble-row bot";
   row.id = "loadingBubble";
-  row.innerHTML = `<div class="bubble"><span class="risk-row info"><span class="risk-dot"></span>확인하고 있어요…</span></div>`;
+  row.innerHTML = `<div class="bubble"><span class="risk-row info"><span class="risk-dot"></span>확인하고 있어요<span class="typing-dots"><span></span><span></span><span></span></span></span></div>`;
   chatLog.appendChild(row);
   scrollToBottom();
 }
 function removeLoadingBubble(){
   const el = document.getElementById("loadingBubble");
   if(el) el.remove();
+}
+
+function typeText(el, text, onDone){
+  const chars = Array.from(text || "");
+  let i = 0;
+  (function step(){
+    i += 1;
+    el.textContent = chars.slice(0, i).join('');
+    scrollToBottom();
+    if(i < chars.length){
+      setTimeout(step, 30);
+    } else if(onDone){
+      onDone();
+    }
+  })();
 }
 
 function renderAnswered(data){
@@ -202,9 +228,16 @@ function renderAnswered(data){
 
   const explain = document.createElement("div");
   explain.className = "explain";
-  explain.textContent = data.answer;
   bubble.appendChild(explain);
 
+  row.appendChild(bubble);
+  chatLog.appendChild(row);
+  scrollToBottom();
+
+  typeText(explain, data.answer, ()=> renderAnsweredRest(data, t, bubble));
+}
+
+function renderAnsweredRest(data, t, bubble){
   // **교정했다는 사실 자체가 답의 일부다.** 밝히지 않으면 보호자는
   // 자기 말이 바뀐 것을 모른 채 답을 받고, 정정할 기회를 잃는다.
   if(data.corrected_from){
@@ -222,14 +255,22 @@ function renderAnswered(data){
     bubble.appendChild(box);
   }
 
-  data.citations.forEach(c=>{
-    const src = document.createElement("div");
-    src.className = "source-line";
-    const loc = [c.publisher, c.source_id, c.title].filter(Boolean).join(' · ')
-      + (c.locator ? ` (${c.locator})` : '');
-    src.textContent = c.quote ? `"${c.quote}" — ${loc}` : `출처: ${loc}`;
-    bubble.appendChild(src);
-  });
+  if(data.citations && data.citations.length){
+    const details = document.createElement("details");
+    details.className = "sources-details";
+    const summary = document.createElement("summary");
+    summary.textContent = `출처 ${data.citations.length}개`;
+    details.appendChild(summary);
+    data.citations.forEach(c=>{
+      const src = document.createElement("div");
+      src.className = "source-line";
+      const loc = [c.publisher, c.source_id, c.title].filter(Boolean).join(' · ')
+        + (c.locator ? ` (${c.locator})` : '');
+      src.textContent = c.quote ? `"${c.quote}" — ${loc}` : `출처: ${loc}`;
+      details.appendChild(src);
+    });
+    bubble.appendChild(details);
+  }
 
   const lv = (v)=> v ?? '미호출';
   const audit = document.createElement("div");
@@ -237,9 +278,6 @@ function renderAnswered(data){
   audit.innerHTML = `규칙 ${lv(t.rule_level)} · LLM ${lv(t.llm_level)} → 최종 ${t.level}`
     + (t.overridden ? ` <span class="gate">· 게이트가 LLM의 하향을 차단했어요</span>` : '');
   bubble.appendChild(audit);
-
-  row.appendChild(bubble);
-  chatLog.appendChild(row);
   scrollToBottom();
 }
 

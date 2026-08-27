@@ -26,7 +26,8 @@ def _unavailable(request):
 
 @login_required
 def chat_room(request):
-    """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동."""
+    """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동.
+    고른 pet 은 세션에 남긴다 — 채팅 내역이 같은 pet 기준으로 보이게 한다."""
     pet_id = request.GET.get("pet_id")
     if pet_id:
         pet = get_object_or_404(Pet, pet_id=pet_id, user=request.user)
@@ -34,12 +35,28 @@ def chat_room(request):
         pet = request.user.pets.first()
         if pet is None:
             return redirect("pets:create")
+    request.session["active_pet_id"] = pet.pet_id
     return render(request, "chat/room.html", {"pet": pet})
 
 
 @login_required
 def session_list(request):
-    my_pet_ids = list(request.user.pets.values_list('pet_id', flat=True))
+    """활성 pet 이 있으면 그 pet 의 대화만 보인다. `?all=1` 이면 전부 본다.
+
+    ⚠️ **범위를 좁혔으면 화면이 그렇다고 말해야 한다** (04 §8). 세션 상태에 따라
+       같은 주소가 다른 범위를 보여 주는데 제목이 그대로면, 사용자는 다른 pet 의
+       대화가 *사라졌다* 고 읽는다. `scoped_pet` 을 넘겨 제목이 이름을 달게 하고,
+       넓히는 길(`?all=1`)도 같이 준다.
+    """
+    scoped_pet = None
+    if request.GET.get("all") != "1":
+        active = request.session.get("active_pet_id")
+        if active:
+            scoped_pet = request.user.pets.filter(pet_id=active).first()
+    if scoped_pet is not None:
+        my_pet_ids = [scoped_pet.pet_id]
+    else:
+        my_pet_ids = list(request.user.pets.values_list('pet_id', flat=True))
     try:
         sessions = list(
             ChatSession.objects.filter(pet_id__in=my_pet_ids).order_by('-created_at')
@@ -57,7 +74,11 @@ def session_list(request):
             'badge_label': label,
             'badge_css': css,
         })
-    return render(request, 'chat/session_list.html', {'items': items})
+    return render(
+        request,
+        'chat/session_list.html',
+        {'items': items, 'scoped_pet': scoped_pet, 'pet_count': len(my_pet_ids)},
+    )
 
 
 @login_required
