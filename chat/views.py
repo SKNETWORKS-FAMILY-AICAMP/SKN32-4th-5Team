@@ -26,16 +26,33 @@ def _unavailable(request):
 
 @login_required
 def chat_room(request):
-    """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동.
-    고른 pet 은 세션에 남긴다 — 채팅 내역이 같은 pet 기준으로 보이게 한다."""
-    pet_id = request.GET.get("pet_id")
-    if pet_id:
-        pet = get_object_or_404(Pet, pet_id=pet_id, user=request.user)
+    """채팅 화면. 활성 반려동물을 정하고 **세션에 남긴다.**
+
+    🔒 **주소로 온 `pet_id` 와 세션에 남은 `pet_id` 를 다르게 다룬다.**
+
+    | 출처 | 잘못된 값이면 |
+    |---|---|
+    | `?pet_id=` — **사용자가 지목한 것** | **404.** 남의 것이거나 없는 것이다 |
+    | 세션 — **우리가 넣은 것** | 조용히 버리고 첫 pet. 우리 잘못이지 사용자 잘못이 아니다 |
+
+    2026-08-27 `lgj` 흡수에서 이 둘이 한 덩어리가 될 뻔했다. 세션에 죽은 pet id 가 남았을 때
+    `/chat/` 이 404 나는 것을 막으려던 것인데, 그렇게 하면 **`?pet_id=<남의_펫>` 도 404 대신
+    조용히 내 첫 pet 을 보여 준다.** `FR-07` · `FR-26`(남의 자원은 404)이 그 자리에서 무너지고,
+    `TC-NFR-SEC-003` 이 통과로 확인한 것이 무효가 된다. **막으려던 것만 막는다.**
+    """
+    pet = None
+    asked = request.GET.get("pet_id")
+    if asked:
+        pet = get_object_or_404(Pet, pet_id=asked, user=request.user)
     else:
+        saved = request.session.get("active_pet_id")
+        if saved:
+            pet = Pet.objects.filter(pet_id=saved, user=request.user).first()
+    if pet is None:
         pet = request.user.pets.first()
         if pet is None:
             return redirect("pets:create")
-    request.session["active_pet_id"] = pet.pet_id
+    request.session["active_pet_id"] = str(pet.pet_id)
     return render(request, "chat/room.html", {"pet": pet})
 
 

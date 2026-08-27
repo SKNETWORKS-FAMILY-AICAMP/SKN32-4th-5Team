@@ -25,21 +25,25 @@ def _build_meta(pet):
 
 
 def active_pet(request):
-    """?pet_id → 세션 → 첫 번째 pet 순으로 정한다.
+    """`?pet_id` → 세션 → 등록순 첫 pet 순으로 정한다.
 
-    링크에 pet_id 가 없는 화면(채팅 내역·기록장)에서도 직전에 고른 pet 이
-    유지되도록 세션을 본다. 세션 값은 chat_room 이 남긴다.
+    링크에 `pet_id` 가 없는 화면(채팅 내역·기록장)에서도 직전에 고른 pet 이 유지되도록
+    세션을 본다.
+
+    🔴 **여기서는 세션에 쓰지 않는다.** 이 함수는 모든 템플릿에서 돈다 — 여기서 쓰면
+       *언제 무엇이 바뀌었는지* 아무도 못 따라간다. **쓰는 곳은 뷰다** —
+       `chat/views.py::chat_room` 과 `diary/views.py::DiaryPageView` 둘.
+       (2026-08-27 `lgj` 흡수 — 그쪽은 여기서도 되썼다. 읽는 자리와 쓰는 자리를 가른다.)
+
+    ⚠️ 세션에 남은 id 는 **없는 pet 일 수 있다** (그 사이 지웠을 때).
+       `.first()` 로 조용히 버리고 다음 후보로 간다 — 우리가 넣은 값이라 우리가 치운다.
     """
     if not request.user.is_authenticated:
         return {}
     pet = None
-    pet_id = request.GET.get("pet_id")
+    pet_id = request.GET.get("pet_id") or request.session.get("active_pet_id")
     if pet_id:
         pet = Pet.objects.filter(pet_id=pet_id, user=request.user).first()
-    if pet is None:
-        saved = request.session.get("active_pet_id")
-        if saved:
-            pet = Pet.objects.filter(pet_id=saved, user=request.user).first()
     if pet is None:
         pet = request.user.pets.first()
     if pet is None:
