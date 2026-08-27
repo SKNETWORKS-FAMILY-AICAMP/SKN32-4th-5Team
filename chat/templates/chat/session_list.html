@@ -22,9 +22,24 @@
     font-size:13.5px;
   }
   .empty .ic{ font-size:32px; display:block; margin-bottom:10px; }
+  .scope-note{
+    font-size:12.5px; color:var(--ink-faint); margin:-4px 0 14px;
+  }
+  .scope-note a{ color:var(--moss); text-decoration:underline; }
+{% endblock %}
+
+{% block heading %}
+  {% if scoped_pet %}{{ scoped_pet.name }}의 지난 대화{% else %}지난 대화 모아보기{% endif %}
 {% endblock %}
 
 {% block content %}
+  {% if scoped_pet %}
+    {# 범위를 좁혔으면 좁혔다고 말한다 (04 §8) — 넓히는 길도 같이 준다. #}
+    <p class="scope-note">
+      {{ scoped_pet.name }} 기준으로 보고 있어요 ·
+      <a href="?all=1">모든 반려동물 대화 보기</a>
+    </p>
+  {% endif %}
   {% for item in items %}
     <a class="session-card" href="{% url 'chat:session_detail' item.session.session_id %}">
       <div style="min-width:0; flex:1;">
