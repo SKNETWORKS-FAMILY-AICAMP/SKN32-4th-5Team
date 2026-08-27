@@ -25,17 +25,19 @@ def _build_meta(pet):
 
 
 def active_pet(request):
-    """?pet_id=xxx가 있으면 그 pet, 없으면 첫 번째 pet."""
+    """?pet_id=xxx가 있으면 그 pet(세션에 저장), 없으면 세션 값, 그것도 없으면 첫 번째 pet."""
     if not request.user.is_authenticated:
         return {}
     pet = None
-    pet_id = request.GET.get("pet_id")
+    pet_id = request.GET.get("pet_id") or request.session.get("active_pet_id")
     if pet_id:
         pet = Pet.objects.filter(pet_id=pet_id, user=request.user).first()
     if pet is None:
         pet = request.user.pets.first()
     if pet is None:
         return {}
+    if str(request.session.get("active_pet_id")) != str(pet.pet_id):
+        request.session["active_pet_id"] = str(pet.pet_id)
     return {
         "active_pet": pet,
         "active_pet_emoji": _SPECIES_EMOJI.get(pet.species, "🐾"),

@@ -47,12 +47,14 @@ class DiaryPageView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        pet_id = self.request.GET.get("pet_id")
+        pet_id = self.request.GET.get("pet_id") or self.request.session.get("active_pet_id")
         pet = None
         if pet_id:
             pet = Pet.objects.filter(pet_id=pet_id, user=self.request.user).first()
         if pet is None:
             pet = self.request.user.pets.first()
+        if pet is not None:
+            self.request.session["active_pet_id"] = str(pet.pet_id)
         ctx["pet"] = pet
         return ctx
 

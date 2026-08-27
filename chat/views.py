@@ -7,13 +7,15 @@ from .models import ChatSession, TRIAGE_MAP
 @login_required
 def chat_room(request):
     """채팅 화면. pet_id 쿼리스트링으로 특정 pet 선택, 없으면 첫 pet 자동."""
-    pet_id = request.GET.get("pet_id")
+    pet_id = request.GET.get("pet_id") or request.session.get("active_pet_id")
+    pet = None
     if pet_id:
-        pet = get_object_or_404(Pet, pet_id=pet_id, user=request.user)
-    else:
+        pet = Pet.objects.filter(pet_id=pet_id, user=request.user).first()
+    if pet is None:
         pet = request.user.pets.first()
         if pet is None:
             return redirect("pets:create")
+    request.session["active_pet_id"] = str(pet.pet_id)
     return render(request, "chat/room.html", {"pet": pet})
 
 
