@@ -36,22 +36,33 @@ sudo mv /tmp/pettriage.conf /etc/nginx/sites-enabled/pettriage
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-## 🔴 지금 이 파일들이 안고 있는 것 다섯
+## 받은 그대로 → 고친 것 일곱
 
-**받은 그대로 넣었다.** 지금 그 기계에서 도는 것과 같아야 재현이 되기 때문이다.
-아래는 **다음 커밋에서 고친다** — 무엇을 바꿨는지가 이력의 diff 로 남게.
+**첫 커밋은 실물 스냅샷이었다** — 지금 그 기계에서 도는 것과 같아야 재현이 되기 때문이다.
+무엇을 바꿨는지는 **그 커밋과의 diff** 로 본다.
 
-| | 무엇 | 왜 |
+| | 무엇이었나 | 어떻게 |
 |---|---|---|
-| ① | `/django-static/` 블록이 **없다** | `DEBUG=false` 면 Django 가 정적을 안 낸다 → **`/admin/` 이 CSS 없이 뜬다** (`10 §6.1` · `11 §6.2` · NFR-17) |
-| ② | gunicorn **워커 1개** | `--workers` 가 없다. 질의 하나가 수십 초 워커를 잡는데(`12 §7`) 하나뿐이라 **두 번째 사용자는 기다린다** |
-| ③ | `X-Forwarded-Proto $http_x_forwarded_proto` | 클라이언트가 보낸 헤더를 **그대로** 넘긴다. Django `SECURE_PROXY_SSL_HEADER` 가 그 값을 믿는다 — 위조하면 평문을 HTTPS 로 착각한다. 지금은 **보안그룹 하나가 막고 있다** |
-| ④ | systemd 가 **MySQL 을 안 기다린다** | `After=network-online.target` 뿐. 재부팅 시 DB 보다 먼저 떠서 죽고, `Restart=on-failure` 로 살아난다 — 그 사이 502 |
-| ⑤ | 업로드 상한이 **세 군데 다 다르다** | 관문 5MB · 여기 10M · `docker/nginx` 20M. 관문이 먼저 거절하니 사고는 없지만 **어디서 잘렸는지 모른다** |
+| ① | `/django-static/` 블록이 **없었다** → 배포된 `/admin/` 이 CSS 없이 떴다 | `alias …/staticfiles/` 추가. **올리기 전 `collectstatic` 필수** (NFR-17) |
+| ② | gunicorn **워커 1개** → 두 번째 사용자가 화면조차 못 열었다 | `--workers 3`. 2 vCPU 에 FastAPI 가 임베딩 2GB 를 상주시켜 보수적으로 |
+| ③ | gunicorn `--timeout` 기본 30초 = httpx 30초와 **같아서** 경계에서 워커가 먼저 죽었다 | `--timeout 90` |
+| ④ | systemd 가 **MySQL 을 안 기다렸다** → 재부팅 시 502 뒤 자동 복구 | `After=` · `Requires=mysql.service` |
+| ⑤ | `/api/` 에 **`proxy_read_timeout` 이 없었다** = 기본 60초. `/api/ask` 는 수십 초 걸린다 | `180s` (로컬은 이미 그랬는데 EC2 만 없었다) |
+| ⑥ | 업로드 상한이 **셋 다 달랐다** (5MB / 10M / 20M) | **10M 으로 통일.** 실질 상한은 관문 5MB |
+| ⑦ | 🔴 **`/api/ask` 속도 제한이 없었다** — 무인증이고 질의당 LLM 6~7회다. `12 §10` 은 ✅ 로 닫아 뒀는데 **닫힌 것은 로컬뿐** | `limit_req` 분당 6건 · `burst=3` · 429 |
 
-> ⚠️ ③ 은 **지금 뚫려 있다는 뜻이 아니다.** ALB 보안그룹이 EC2:80 을 ALB 에서만 열어 둬서
-> 외부에서 직접 못 온다 (배포계획서 §5.2). 문제는 **그 방어가 한 겹뿐이고, 왜 그래도 되는지가**
-> **어디에도 안 적혀 있었다**는 것이다.
+### 🔴 고치지 **않은** 것 하나 — `X-Forwarded-Proto`
+
+`$http_x_forwarded_proto` 는 **클라이언트가 보낸 헤더를 그대로** 넘긴다.
+Django `SECURE_PROXY_SSL_HEADER` 가 그 값을 믿으므로, 위조하면 평문을 HTTPS 로 착각한다.
+
+**지금 뚫려 있다는 뜻은 아니다** — 보안그룹이 EC2:80 을 ALB 에서만 연다 (배포계획서 §5.2).
+**문제는 방어가 그 한 겹뿐인데 왜 그래도 되는지가 어디에도 없었다**는 것이다.
+이제 `nginx/proxy_params_pettriage` 안에 적혀 있다.
+
+`$scheme` 로 바꾸면 **안 된다** — nginx 는 항상 `http` 로 받으므로 Django 가 HTTPS 를 모르게 되고
+`SECURE_SSL_REDIRECT` 와 만나 무한 리다이렉트가 난다. 제대로 닫으려면
+`set_real_ip_from <ALB 서브넷>` 이 필요하고, **대역 확인이 남았다** (`12 §10`).
 
 ## 여기 없는 것
 

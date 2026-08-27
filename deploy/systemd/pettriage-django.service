@@ -1,12 +1,32 @@
 [Unit]
 Description=PetTriage Django (Gunicorn)
-After=network-online.target
+# 🔴 **MySQL 을 기다린다.** 예전에는 `network-online.target` 만 봐서, 재부팅하면
+#    DB 보다 먼저 떠서 연결에 실패하고 `Restart=on-failure` 로 되살아났다 —
+#    그 사이 502 가 났다. NFR-20 이 "재부팅 시 자동 복구"인데 *결국은* 복구되는
+#    수준이었다 (2026-08-27 발견).
+After=network-online.target mysql.service
 Wants=network-online.target
+Requires=mysql.service
 
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/SKN32-4th-5Team
-ExecStart=/home/ubuntu/SKN32-4th-5Team/.venv/bin/gunicorn webapp.wsgi:application --bind 127.0.0.1:8000
+# 🔴 **워커를 명시한다.** 없으면 기본 1개다.
+#
+#    질의 하나가 수십 초 워커를 붙잡는다 (12 §7 · 14 §1.3). 워커가 하나면
+#    **두 번째 사용자는 첫 번째가 끝날 때까지 화면조차 못 연다.**
+#    시연에서 둘이 동시에 만지면 바로 드러난다 (2026-08-27 발견).
+#
+#    3개인 이유 — `m7i-flex.large` 는 2 vCPU 다. 공식은 `2×코어+1 = 5` 지만
+#    같은 기계에서 FastAPI 가 임베딩 모델 2GB 를 상주시킨다 (12 §7). 메모리를
+#    남겨 두는 쪽으로 잡았다.
+#
+#    `--timeout 90` — 기본 30초다. 리포트 요약이 FastAPI 를 기다리는 httpx
+#    타임아웃이 30초라(`diary/views.py`), 기본값이면 **경계에서 워커가 먼저 죽는다.**
+ExecStart=/home/ubuntu/SKN32-4th-5Team/.venv/bin/gunicorn webapp.wsgi:application \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --timeout 90
 Restart=on-failure
 RestartSec=5
 

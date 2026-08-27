@@ -1,0 +1,26 @@
+# 공통 프록시 헤더 (`/etc/nginx/proxy_params_pettriage`)
+#
+# ⚠️ **배포판 `proxy_params` 를 함께 쓰지 않는다.** 두 번 들어가면 헤더가 겹쳐
+#    400 이 난다 — 배포계획서 §5.3 에서 실제로 겪은 것이다.
+
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+# 🔴 **이 줄은 클라이언트가 보낸 헤더를 그대로 넘긴다.**
+#
+#    Django 의 `SECURE_PROXY_SSL_HEADER` 가 이 값을 믿고 `request.is_secure()` 를 정한다.
+#    누가 `X-Forwarded-Proto: https` 를 직접 붙이면 **평문 요청을 HTTPS 로 착각한다** —
+#    `SECURE_SSL_REDIRECT` 가 우회되고 secure 쿠키가 평문 경로로 나갈 수 있다.
+#
+#    **왜 그래도 되는가** — 이 헤더는 ALB 만 붙일 수 있다. EC2 보안그룹이 80 포트를
+#    **ALB 보안그룹에서만** 열어 두어 외부에서 직접 오지 못한다 (배포계획서 §5.2).
+#
+#    🔴 **방어가 그 한 겹뿐이다.** 보안그룹 규칙을 넓히는 순간 이 줄이 위험해진다.
+#       80 을 0.0.0.0/0 으로 여는 변경을 할 때는 **반드시 이 줄을 함께 본다.**
+#
+#    ⚠️ `$scheme` 로 바꾸면 안 된다 — nginx 는 항상 `http` 로 받으므로 Django 가
+#       HTTPS 를 모르게 되고, `SECURE_SSL_REDIRECT` 와 만나 **무한 리다이렉트**가 난다.
+#       제대로 닫으려면 `set_real_ip_from <ALB 서브넷>` 으로 신뢰 출처를 명시해야 한다 —
+#       ALB 서브넷 대역 확인이 필요하다 (`12 §10` 미결).
+proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;

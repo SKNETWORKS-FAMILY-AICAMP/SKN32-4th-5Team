@@ -1,12 +1,18 @@
 [Unit]
 Description=PetTriage FastAPI
-After=network-online.target
-Wants=network-online.target
+# 대화 적재(`chat_logger`)가 DB 를 쓴다. 7b-5 에서 Django 로 넘어가면 이 의존은
+# 사라진다 (D-105). 그때까지는 기다린다.
+After=network-online.target mysql.service
+Wants=network-online.target mysql.service
 
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/SKN32-4th-5Team
-ExecStart=/home/ubuntu/SKN32-4th-5Team/.venv/bin/uvicorn pettriage.app.main:app --host 127.0.0.1 --port 8001
+# ⚠️ **워커를 늘리지 않는다.** 임베딩 모델을 프로세스마다 2GB 씩 올린다 (NFR-11 · 12 §4.3).
+#    워커 2개면 메모리가 두 배로 든다. 늘려야 하면 **인스턴스부터 본다.**
+ExecStart=/home/ubuntu/SKN32-4th-5Team/.venv/bin/uvicorn pettriage.app.main:app \
+    --host 127.0.0.1 \
+    --port 8001
 Restart=on-failure
 RestartSec=5
 
