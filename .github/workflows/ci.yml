@@ -63,7 +63,14 @@ jobs:
       # 학습 의존성(torch·CUDA)은 설치하지 않는다.
       # models/ 의 무거운 임포트가 함수 안에 있어야 이 job 이 성립한다 —
       # 모듈 최상단으로 올리면 여기서 깨진다. 그것이 의도된 제약이다.
-      - run: pip install -e '.[api,dev]' -c constraints.txt
+      # 🔴 **`django` 를 여기 넣은 이유** (2026-08-27 · 7b-1) —
+      #    이 잡이 `.[api,dev]` 만 깔던 동안 `accounts/`·`pets/`·`diary/`·`chat/` 은
+      #    **CI 가 한 줄도 실행하지 않았다.** 테스트 666건이 초록인데 화면 코드는
+      #    전부 미검증이었고, 그 사이로 결함 넷이 지나갔다 (D-108·D-109·D-110·FR-30).
+      #
+      #    `db-deps` 잡이 `.[api,db,dev]` 로 같은 교훈을 이미 한 번 겪었다 —
+      #    **더 많이 까는 잡만 초록이면 의존성 누락이다.**
+      - run: pip install -e '.[api,django,dev]' -c constraints.txt
       - name: 안전 장치 회귀 테스트
         #  `pytest -q` 였다. `pyproject.toml` 의 `addopts` 에 **이미 `-q` 가 있어**
         #  실제로는 `-qq` 로 돌았고, 그러면 실패한 테스트의 **이름조차 안 나온다.**

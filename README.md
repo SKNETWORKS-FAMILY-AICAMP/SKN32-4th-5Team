@@ -99,7 +99,7 @@
 | **DB** | **MySQL**(개발은 SQLite) · **Django ORM** | 계정 · 프로필 · 다이어리. 스키마 소유자는 Django (D-104). SQLAlchemy 는 7b 에서 걷어낸다 |
 | **프론트** | **Django 템플릿 9장** — 빌드 도구·node 없음 | 3차 정적 HTML 6장은 6단계 완료 시 지운다 |
 | **수집·전처리** | pypdf · pdfplumber · BeautifulSoup · pandas · piexif | 원문 → 사실 표 → **코드가 문장화** |
-| **품질** | pytest **666** · ruff · mypy · pre-commit · GitHub Actions | 안전 장치 회귀 테스트가 CI 게이트다. 🔴 Django 앱은 아직 밖에 있다 (13 §5) |
+| **품질** | pytest **682** · ruff · mypy · pre-commit · GitHub Actions | 안전 장치 회귀 테스트가 CI 게이트다. Django 앱 16건이 2026-08-27 에 들어왔다 (13 §5) |
 | **런타임** | Python **3.11** · `constraints.txt` 로 버전 고정 | 재현성 요건 |
 
 > **버전을 상한까지 고정한 이유** — `constraints.txt` 가 잠근다.
@@ -154,7 +154,7 @@ GPU가 없어도 API·테스트는 전부 돈다. 학습 의존성은 `[train]` 
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 make install                                          # = pip install -e '.[api,rag,ingest,db,dev,django]' -c constraints.txt
 python scripts/setup_env.py                           # .env 생성·검증 (Django 키 5종 포함)
-pytest                                                # 666 passed  (-q 를 붙이지 않는다)
+pytest                                                # 682 passed  (-q 를 붙이지 않는다)
 python scripts/build_index.py --store chroma          # 벡터 인덱스는 커밋되지 않는다. 각자 만든다
 python manage.py migrate                              # 웹앱 DB (pets · diary)
 python PetTriage_Launcher                             # [5] 시연 → http://localhost/
@@ -579,7 +579,7 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 ├── docker/nginx/       라우팅 — /api/ 는 추론, 나머지는 Django
 ├── eval/               골든셋 60건 · 평가 하네스 · 결과 보고서
 ├── scripts/            진입점 — 인덱스 빌드 · 검사기 · 학습 데이터 생성 · 진단
-├── tests/              안전 장치 회귀 테스트 666건  🔴 Django 앱은 아직 밖 (13 §5)
+├── tests/              안전 장치 회귀 테스트 682건  (django_apps/ 16 포함 · 13 §5)
 ├── data/               🔴 대장 + 사실 표만 커밋. 원문은 커밋 금지
 └── .github/            CI · PR/이슈 템플릿 · 기여 규약
 ```
