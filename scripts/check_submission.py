@@ -36,7 +36,17 @@ _INLINE = "(스크립트 안)"
 
 
 def _hash(p: Path) -> str:
-    return hashlib.sha256(p.read_bytes()).hexdigest()[:12]
+    """🔴 **줄바꿈을 지우고 잰다.** `build_submission_pdf.source_hash` 와 같아야 한다.
+
+    `.gitattributes` 가 `* text=auto` 라서, 팀원이 **Windows 에서 새로 clone 하면**
+    `.md` 가 CRLF 로 받아진다. 내용은 한 글자도 안 바뀌었는데 바이트가 달라지고,
+    날바이트를 쟀으면 **아무 잘못 없는 사람의 CI 가 빨강이 된다.**
+
+    *"내 쪽에서는 아무것도 안 고쳤는데 빨강"* 인 검사는 고쳐지지 않는다 — **지워진다.**
+    검사는 자기가 틀릴 수 있는 자리를 먼저 막아야 신뢰를 얻는다.
+    """
+    text = p.read_text(encoding="utf-8").replace("\r\n", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
 def main() -> int:

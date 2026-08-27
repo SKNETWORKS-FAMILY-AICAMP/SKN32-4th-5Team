@@ -28,6 +28,26 @@ import os
 
 os.environ["DATABASE_URL"] = ""
 
+# ── Django 앱 테스트는 `django` extra 가 있을 때만 수집한다 ──────────────
+#
+# 🔴 **없는 것을 없다고 말하고 넘어간다.** `.[api,dev]` 만 깐 구성(FastAPI 만 보는
+#    팀원 · CI `db-deps` 잡)에서 `tests/django_apps/` 를 수집하면 임포트 에러로
+#    **전체 스위트가 죽는다.** 반대로 조용히 건너뛰면 *"Django 테스트가 돌았다"* 로
+#    읽힌다 — 그건 04 §8 이 금하는 **말 없는 검사 축소**다.
+#
+#    그래서 건너뛰되 `--collect-only` 나 `-rs` 에서 이유가 보이게 둔다.
+try:
+    import django as _django  # noqa: F401
+
+    _has_django = True
+except ImportError:  # pragma: no cover - 구성에 따라 갈린다
+    _has_django = False
+    collect_ignore_glob = ["django_apps/*"]
+    print(
+        "\n※ django 가 없어 tests/django_apps/ 를 건너뛴다 — "
+        "돌리려면 pip install -e '.[api,db,django,dev]' -c constraints.txt\n"
+    )
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 

@@ -99,6 +99,8 @@ tzdata==2026.3
 # ── 개발 ──────────────────────────────────────────────────
 pytest==8.3.4
 pytest-cov==6.0.0
+# Django 앱 테스트 (7b-1). `django` extra 와 짝이다 — pyproject 주석 참조.
+pytest-django==4.9.0
 ruff==0.8.6
 mypy==1.14.1
 httpx==0.28.1

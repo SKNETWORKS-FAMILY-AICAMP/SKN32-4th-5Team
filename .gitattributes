@@ -13,6 +13,7 @@ Makefile    text eol=lf
 *.jpg       binary
 *.pdf       binary
 *.xlsx      binary
+*.pptx      binary
 *.docx      binary
 *.zip       binary
 *.safetensors binary
