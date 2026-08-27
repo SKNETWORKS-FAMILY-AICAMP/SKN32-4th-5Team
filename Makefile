@@ -54,6 +54,10 @@ docs-check:      ## 산출물 문서가 주장하는 값이 실물과 같은가 
 	python scripts/check_requirements.py
 	python scripts/check_docs.py
 
+reqs-xlsx:       ## 요구사항정의서 → 제출용 xlsx 재생성 (생성물이다. 손으로 고치지 않는다)
+	python scripts/check_requirements.py
+	python scripts/build_requirements_xlsx.py --write
+
 rules:           ## 사실 표 → 규칙 테이블 재생성 (생성물이다. 손으로 고치지 않는다)
 	python scripts/build_rule_table.py --write
 

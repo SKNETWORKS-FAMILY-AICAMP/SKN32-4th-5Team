@@ -58,6 +58,19 @@ class Pet(models.Model):
 
     class Meta:
         db_table = "pets"
+        #: 🔴 **`ordering` 이 없으면 `.first()` 가 무엇을 주는지 아무도 모른다.**
+        #:
+        #: `pet_id` 는 랜덤 UUID 문자열 PK 다. 정렬을 안 걸면 DB 가 편한 순서로 주고,
+        #: 그 순서는 등록순과 아무 상관이 없다. 그런데 화면 셋이 `.first()` 에 기대어
+        #: **"첫 반려동물"** 을 고른다 —
+        #:   `chat/views.py`(pet_id 없이 /chat/ 진입) · `chat/context_processors.py`
+        #:   (사이드바 카드) · `diary/views.py`(기록장 기본 pet).
+        #:
+        #: 2026-08-27 권소라의 UI 테스트(TC-FR-CHAT-006)가 잡아냈다 —
+        #: *"현재는 등록순과 우연히 일치하나 신규 등록 시 뒤집힐 수 있음"*.
+        #: 우연히 맞는 것은 맞는 것이 아니다. FR-CHAT-006 이 "첫 반려동물"이라고
+        #: 적었으므로 **등록순**으로 못박는다.
+        ordering = ["created_at"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.pet_id})"
