@@ -219,8 +219,14 @@ MANIFEST = "MANIFEST.md"
 
 
 def source_hash(md: Path) -> str:
-    """원본 `.md` 의 sha256 앞 12자리."""
-    return hashlib.sha256(md.read_bytes()).hexdigest()[:12]
+    """원본 `.md` 의 sha256 앞 12자리. **`check_submission._hash` 와 같아야 한다.**
+
+    🔴 **줄바꿈(CRLF/LF)을 지우고 잰다.** `.gitattributes` 가 `* text=auto` 라서
+       Windows 에서 새로 clone 하면 `.md` 가 CRLF 로 받아진다. 날바이트를 쟀으면
+       **내용이 같은데 해시가 달라져** 팀원 쪽에서 헛되게 빨강이 난다.
+    """
+    text = md.read_text(encoding="utf-8").replace("\r\n", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
 def write_manifest(rows: list[tuple[str, str, str, int, int]]) -> None:
