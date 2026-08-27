@@ -170,8 +170,7 @@
     <a class="sidebar-item {% block nav_history_active %}active{% endblock %}"
        href="{% url 'chat:session_list' %}"><span class="ic">💬</span>채팅 내역</a>
     <a class="sidebar-item {% block nav_diary_active %}{% endblock %}"
-       href="{% url 'diary-page' %}"><span class="ic">📖</span>기록장</a>
-
+       href="{% url 'diary-page' %}{% if active_pet %}?pet_id={{ active_pet.pet_id }}{% endif %}"><span class="ic">📖</span>기록장</a>
     <div class="sidebar-section-label">관리</div>
     <a class="sidebar-item {% block nav_pets_active %}{% endblock %}"
        href="{% url 'pets:list' %}"><span class="ic">🐾</span>반려동물</a>

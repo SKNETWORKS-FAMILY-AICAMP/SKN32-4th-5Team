@@ -25,13 +25,21 @@ def _build_meta(pet):
 
 
 def active_pet(request):
-    """?pet_id=xxx가 있으면 그 pet, 없으면 첫 번째 pet."""
+    """?pet_id → 세션 → 첫 번째 pet 순으로 정한다.
+
+    링크에 pet_id 가 없는 화면(채팅 내역·기록장)에서도 직전에 고른 pet 이
+    유지되도록 세션을 본다. 세션 값은 chat_room 이 남긴다.
+    """
     if not request.user.is_authenticated:
         return {}
     pet = None
     pet_id = request.GET.get("pet_id")
     if pet_id:
         pet = Pet.objects.filter(pet_id=pet_id, user=request.user).first()
+    if pet is None:
+        saved = request.session.get("active_pet_id")
+        if saved:
+            pet = Pet.objects.filter(pet_id=saved, user=request.user).first()
     if pet is None:
         pet = request.user.pets.first()
     if pet is None:
