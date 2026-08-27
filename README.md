@@ -14,6 +14,8 @@
 ![Python](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-18_nodes-3A4F37)
 ![Chroma](https://img.shields.io/badge/ChromaDB-888_chunks-B3542F)
+![Tests](https://img.shields.io/badge/tests-682_passed-3A4F37)
+![Deploy](https://img.shields.io/badge/AWS-ALB_%C2%B7_EC2_%C2%B7_HTTPS-FF9900)
 ![Code](https://img.shields.io/badge/code-PolyForm_NC_1.0.0-6B5B95)
 ![Docs](https://img.shields.io/badge/docs-CC_BY--NC_4.0-6B5B95)
 
@@ -29,6 +31,12 @@
 [SKN32-3rd-5Team](https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN32-3rd-5Team) 에서 이어받았습니다.**
 4차에서는 **Django 기반 웹 애플리케이션 전환**과 **AWS 배포**를 다룹니다.
 3차 산출물 문서는 [`docs/archive-3rd/`](docs/archive-3rd/) 에 보관돼 있습니다.
+
+<br>
+
+### 🌐 [https://pettriage.kro.kr](https://pettriage.kro.kr)
+
+ALB(ACM 인증서) → EC2 의 nginx → Django · FastAPI · systemd 로 상시 기동
 
 <br>
 
@@ -175,7 +183,12 @@ CI 와 같은 검사를 돌리려면 — `ruff check src tests scripts eval` · 
 | `.[dev]` | pytest · ruff · pre-commit |
 
 🔴 **`[db]` 를 빠뜨리지 않는다.** 없어도 설치는 성공하지만 `tests/test_auth_api.py` 가 모듈째
-건너뛰어져 인증·프로필 25건이 안 도는데 요약줄에는 `1 skipped` 로만 보인다.
+건너뛰어져 **28건**(테스트 함수 25개가 펼쳐진 수)이 안 도는데 요약줄에는 `1 skipped` 로만 보인다.
+같은 이유로 `[django]` 가 없으면 `tests/django_apps/` 16건이 통째로 빠진다 — 그쪽은
+`tests/conftest.py` 가 **건너뛴다고 찍어 준다.**
+
+> 🔄 이 경고는 **7b-2 에서 사라진다** — `test_auth_api.py` 가 검사하는 3차 인증 라우터를
+> 그때 지운다. 없는 안전망이 있는 척하는 상태가 끝나는 것이라 테스트 수가 줄어도 손해가 아니다.
 
 ```bash
 make facts     # 사실 표 검사          make eval     # 평가 하네스
@@ -194,8 +207,10 @@ make index     # 사실 표 → 청크         make todo     # 남은 일 목록
 
 **4차 (진행 중)** —
 [산출물 다섯](#필수-산출물--4차-다섯) ·
-[전환 설계](docs/14_전환설계.md) ·
-[진행 상태](docs/14_전환설계.md)
+[배포](#4차--aws-배포) ·
+[품질](#4차--품질-관리) ·
+[역할 분담](#역할-분담-4차) ·
+[전환 설계](docs/14_전환설계.md)
 
 **3차 (완료)** —
 [핵심 주장](#핵심-주장--안전은-사후-검증이-아니라-사전-바닥에서-온다) ·
@@ -449,7 +464,7 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 | **10.4초 침묵** | 스트리밍을 쓰지 않으므로 이 값이 그대로 사용자가 겪는 침묵이다. 응급 상황에서 그 자체로 설계 결함 |
 | **통과율 65.0%는 답변 품질이 아니다** | 문구 조건이 `any` 라 필수 문구가 빠져도 통과하고, 통과 39건 중 10건은 채점 조건이 0개인 거절 케이스다 |
 | **골든셋이 물질 중심으로 편향돼 있다** | 골든셋 밖 20건을 돌려 보니 `answered` 11건 중 **3건(27%)** 에서 무관한 자료가 근거로 실렸다. *"강아지가 아파요"* 한마디에 등급 4가 섰다 |
-| **어휘 표에 구멍이 있다** | *"초콜릿"* 은 통과하는데 *"초코"* 는 거절된다. 별칭 표에 없어서다 |
+| **짧은 말은 여전히 못 잡는다** 🔄 | 4차에서 절반이 닫혔다 — *"초콜렛"* 은 이제 통과한다(`compute/spelling.py` 편집거리 교정). *"초코"* 는 **여전히 거절되고 그건 의도한 것이다** — 2글자에 거리 1을 허용하면 `포도`↔`포토` · `양파`↔`양말` 이 전부 걸린다 (`MIN_NORMALIZED_LEN = 3`) |
 | **`prevent` 유형 통과 0% · 조류 정량 역치 0행** | 예방형 질의는 구조가 다르고, 조류는 체중당 자료가 없어 정성 표에만 의존한다 |
 
 > ℹ️ **④ 근거 검증의 하이브리드 구조**(2-gram이 바닥, LLM은 조이기만 — D-91)는
@@ -478,14 +493,14 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 
 | 산출물 | 어디 |
 |---|---|
-| ① **수집 데이터 · 전처리 문서** | [`docs/archive-3rd/01`~`01e`](docs/) · `data/facts/` 888행 · `data/manifests/` 대장 4종 · [`ingest/`](src/pettriage/ingest/) |
+| ① **수집 데이터 · 전처리 문서** | [`docs/archive-3rd/01`~`01e`](docs/archive-3rd/) · `data/facts/` 888행 · `data/manifests/` 대장 4종 · [`ingest/`](src/pettriage/ingest/) |
 | ② **시스템 아키텍처** | [`docs/02`](docs/02_시스템-아키텍처.md) · [한 장 요약 PDF](docs/archive-3rd/시스템설계_한장.pdf) · LangGraph 실물 [`graph/build.py`](src/pettriage/graph/build.py) |
 | ③ **RAG + 벡터DB + LangChain 연동 코드** | `--arm A` ≡ `--arm A-LC` **실패 21건 완전 일치**로 동작 증명 |
 | ④ **테스트 계획 · 결과 보고서** | [`docs/archive-3rd/04`](docs/archive-3rd/04_테스트-평가계획.md) + [`결과보고서_제출용/`](eval/reports/결과보고서_제출용/) 3종 |
 
 **설계 결정 기록**(D-01~D-98)을 맥락·대안·트레이드오프와 함께 남겼다 →
 [`docs/06`](docs/06_설계결정기록.md)
-4차 결정(**D-99~D-105**)은 [`docs/14` §4](docs/14_전환설계.md) 에 초안으로 있다 — 06 에 편입 예정.
+4차 결정(**D-99~D-112**)은 [`docs/14` §4](docs/14_전환설계.md) 에 초안으로 있다 — 06 에 편입 예정.
 
 ---
 
@@ -493,17 +508,110 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 
 | 산출물 | 어디 | 상태 |
 |---|---|---|
-| **요구사항 정의서** | [`docs/10`](docs/10_요구사항정의서.md) | ✅ UC 9 · FR 23 · NFR 12 · 추적표 |
+| **요구사항 정의서** | [`docs/10`](docs/10_요구사항정의서.md) | ✅ UC 11 · FR 47 · NFR 24 · 추적표 |
 | **화면설계서** | [`docs/11`](docs/11_화면설계서.md) | ✅ 화면 10장 · 트리아지 3상태 |
 | **시스템 구성도** | [`docs/12`](docs/12_시스템구성도.md) | ✅ 포트 · 라우팅 · 저장소 · 배포 |
-| **테스트 계획·결과 보고서** | [`docs/13`](docs/13_테스트계획.md) | 🟡 계획 완료 · 결과는 8단계 |
-| **LLM 연동 웹 애플리케이션** | `webapp/` · `accounts/` · `pets/` · `diary/` · `chat/` | 🟡 전환 중 (4·5·6단계) |
+| **테스트 계획·결과 보고서** | [`docs/13`](docs/13_테스트계획.md) | ✅ 다섯 층 · 자동 **682** · 수동 **51** · 8단계 회귀만 남았다 |
+| **LLM 연동 웹 애플리케이션** | `webapp/` · `accounts/` · `pets/` · `diary/` · `chat/` | ✅ 배포됨 ([pettriage.kro.kr](https://pettriage.kro.kr)) · 🟡 3차 라우터 폐기(7b-2~5)가 남았다 |
+
+제출용 PDF 묶음은 **`제출_4차/`** 에 있다. 손으로 고치지 않는 생성물이고
+(`make submit-pdf`), 원본 문서가 바뀌었는데 다시 안 만들면
+`scripts/check_submission.py` 가 **CI 를 빨갛게 만든다** (D-111).
 
 전환 설계는 [`docs/14`](docs/14_전환설계.md) — 왜 전체를 Django 로 옮기지 않는지, 경계가 어디인지,
 9단계 진행 순서가 들어 있다. **진행 상태는 `14 §5.1` 표가 단일 출처다.**
 
 > 🔴 **4차의 핵심 카드는 "판정이 바뀌지 않았다"** 다 (D-102).
 > 전환 전 기준선을 태그(`freeze-django-before`)로 박아 뒀고, 8단계에서 그것과 맞댄다.
+
+---
+
+## 4차 — AWS 배포
+
+**[https://pettriage.kro.kr](https://pettriage.kro.kr)** 에서 돌고 있다.
+
+```
+사용자 ──https──▶ ALB (ACM 인증서 · 443)          공개는 443 · 80 뿐
+                    │  HTTP → HTTPS 리다이렉트
+                    ▼
+                  EC2 · nginx :80
+                    ├─ /api/ask ─────────▶ FastAPI :8001   추론 (외부 비공개)
+                    ├─ /api/records·report ▶ Django :8000
+                    └─ 그 밖의 전부 ───────▶ Django :8000
+                                              └──▶ MySQL :3306 (내부)
+```
+
+**번호가 작을수록 바깥이다** — 8001 이 공개되면 인증 없는 추론이 그대로 열린다.
+
+| 무엇 | 어디 |
+|---|---|
+| nginx · systemd 설정 **정본** | [`deploy/`](deploy/) — 여기서 고치고 EC2 에 올린다 (D-107) |
+| 로컬 개발용 (다른 물건이다) | `docker/nginx/` · `compose.yaml` |
+| 재부팅 후 자동 기동 | `deploy/systemd/` — Django(gunicorn) · FastAPI(uvicorn) 각 1개 |
+
+> 🔴 **설정을 고친 것과 서버가 그렇게 도는 것은 다르다.**
+> `12 §10` 이 `/api/ask` 속도 제한을 ✅ 로 적어 뒀는데, 닫힌 것은 **로컬뿐이었고
+> 공개된 EC2 는 열려 있었다** (2026-08-27 발견). 무인증이고 질의 1건에 LLM 을
+> 6~7회 부르는 주소다. 그래서 EC2 설정을 **git 으로 반입해** 정본을 하나로 만들었다.
+
+```bash
+sudo cp deploy/nginx/pettriage.conf /etc/nginx/sites-enabled/pettriage
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+## 4차 — 품질 관리
+
+**초록이 안전을 뜻하지 않는다.** 자동 테스트 657건이 전부 통과하던 때에
+결함 넷이 지나갔고, 넷 다 사람이 화면을 눌러 보고서야 나왔다.
+
+| 무엇이 틀렸나 | 왜 자동으로 못 봤나 |
+|---|---|
+| **D-108** 성장기 판단이 화면·서버 두 벌 — 「0.5살」에 반대 답 | 두 구현을 맞대 보는 테스트가 없었다 |
+| **D-109** 다이어리를 여는 것만으로 LLM 요약 — 2분에 9번, 다운로드 0번 | 아무도 *"몇 번 부르는가"* 를 묻지 않았다 |
+| **D-110** 턴 사이에서 대화가 끊김 — 제대로 답할수록 거절당한다 | 두 턴에 걸친 테스트가 하나도 없었다 |
+| **FR-30** `<img src=…/logout/>` 한 줄로 남을 로그아웃 | 테스트는 *"로그아웃이 되는가"* 만 봤다 |
+
+원인은 하나다 — **웹 화면 코드가 `testpaths` 밖에 있었다.**
+2026-08-27 에 `tests/django_apps/` 16건을 붙여 닫았다 ([`docs/13` §5](docs/13_테스트계획.md)).
+
+```
+① 단위     603건  프레임워크 무관        ④ 회귀      60건  골든셋 · 전환 전후 대조
+② 통합      63건  FastAPI 결합           ⑤ 수동 UI   51건  사람이 브라우저로 (권소라)
+③ Django    16건  🆕 화면·세션·소유권
+```
+
+**초록이 빨강이 될 수 있는지도 확인했다.** 16건마다 그것이 지키는 코드를 되돌려
+봤더니 다섯 중 하나가 초록으로 남았다 — 정렬 테스트가 SQLite 의 삽입 순서에
+기대고 있었다. 결과 대신 **질의에 `ORDER BY` 가 있는가**를 보도록 고쳤다
+([`docs/13` §5.2.1](docs/13_테스트계획.md)).
+
+> **빨강이 될 수 없는 초록은 없는 것보다 나쁘다.** 없으면 없는 줄 알지만,
+> 있으면 지켜지고 있다고 믿는다.
+
+문서가 실물과 같은지도 기계가 본다 — `make docs-check` 가 포트 · `top_k` · 임계값 ·
+테스트 수 · **제출 PDF 의 원본 해시**를 코드에서 직접 읽어 대조하고, CI `lint` 잡이 돌린다.
+
+---
+
+## 역할 분담 (4차)
+
+> ⬜ **초안이다 — 팀장 확인 대기.** 발표자료(`제출_4차/…최종.pptx`)의 파트 구성에서
+> 옮겨 적은 것이라 실제 기여와 어긋날 수 있다. 확정되면 이 줄을 지운다.
+
+| 담당 | 맡은 것 |
+|---|---|
+| **오한빈** (팀장) | 전환 설계와 경계 결정(D-99~D-112) · 판정 엔진 · 산출물 문서 통합 · 품질 게이트 — Django 앱 테스트 · 검사 스크립트 · 제출 묶음 |
+| **권소라** | 계정 · 펫 프로필 Django 이관 · MySQL 스키마 · 화면 이식 · **수동 UI 테스트 51건** (여기서 결함 셋이 나왔다) |
+| **이서은** | 다이어리 Django 이관 · `GET /api/report` 경계 설계 · 기능 고도화(체중 급변 · 스트릭 · 표기 흔들림) · 화면정의서 |
+| **이근준** | AWS 배포 — ALB · ACM · EC2 · nginx · systemd · 도메인 전환 |
+
+> 3차에서 설계 문서가 117:0 으로 쏠렸고, 그것을 되풀이하지 않으려고 **겹치지 않는
+> 네 덩어리**로 나눴다. 산출물 문서의 기여는 각 문서 끝의 **기여 이력** 표에 남긴다 —
+> 제출 PDF 의 작성자 줄도 *"통합: 오한빈 · 내용 기여: 각 문서 기여 이력"* 으로 적는다.
+
+배분의 근거와 남은 조각(7b-2~7b-5)은 [`docs/14` §5.4 · §6](docs/14_전환설계.md).
 
 ---
 
@@ -576,10 +684,12 @@ python eval/harness/run_eval.py --arm A-LC  --json eval/reports/재현_A-LC.json
 ├── chat/               채팅 화면 · 대화 내역  ⚠️ 내역은 7b 까지 503 (D-105)
 ├── templates/          accounts · pets 화면
 ├── manage.py           Django 진입점
-├── docker/nginx/       라우팅 — /api/ 는 추론, 나머지는 Django
+├── deploy/             🌐 **EC2 운영 정본** — nginx · systemd. 여기서 고치고 올린다 (D-107)
+├── docker/nginx/       라우팅 — /api/ 는 추론, 나머지는 Django. **로컬 개발용이다**
 ├── eval/               골든셋 60건 · 평가 하네스 · 결과 보고서
 ├── scripts/            진입점 — 인덱스 빌드 · 검사기 · 학습 데이터 생성 · 진단
 ├── tests/              안전 장치 회귀 테스트 682건  (django_apps/ 16 포함 · 13 §5)
+├── 제출_4차/           필수 산출물 PDF 6종 + MANIFEST — 생성물이지만 **커밋한다** (D-111)
 ├── data/               🔴 대장 + 사실 표만 커밋. 원문은 커밋 금지
 └── .github/            CI · PR/이슈 템플릿 · 기여 규약
 ```
@@ -611,11 +721,23 @@ PETTRIAGE__RETRIEVAL__TOP_K=8 make serve  # 파일을 고치지 않고 한 번�
 | 엔드포인트 | 용도 |
 |---|---|
 | `POST /api/ask` | 질의응답. **항상 200**, `status` 로 분기 |
-| `POST /api/records` · `GET /api/report` | 다이어리 기록(하루 1건 upsert) · 기간 리포트 |
-| `POST /api/auth/signup` · `login` · `logout` · `GET /api/users/me` | 계정 (JWT + bcrypt) |
-| `POST`·`GET /api/pets` · `GET`·`PATCH`·`DELETE /api/pets/{id}` | 반려동물 프로필 |
 | `GET /api/triage-levels` | 등급 정의 + **도출 근거 원문** — 프론트가 등급 표현을 하드코딩하지 않게 한다 |
 | `GET /api/health` | 현재 엔진 (`stub` / `graph`) + `model_loaded` |
+| `POST /internal/report/summarize` | 기간 요약. **Django 만 부른다** — 공개 경로가 아니다 |
+
+다이어리는 **Django** 가 받는다 — `POST /api/records` · `GET /api/report`.
+nginx 가 이 둘만 Django 로 보내고 나머지 `/api/` 는 추론으로 보낸다 (`deploy/nginx/`).
+
+> 🔴 **3차의 계정·펫 API 는 2026-08-27 부터 404 다.**
+>
+> | 막은 것 | 왜 |
+> |---|---|
+> | `POST /api/auth/signup` · `login` | **무인증으로 공개돼 있었다.** Django `auth_user` 가 아닌 **다른 표**에 계정을 만들었고 아무도 안 봤다 |
+> | `GET /api/users/me` · `/api/pets` (5개) | 우리 화면이 한 번도 쓰지 않는 주소였다 |
+>
+> nginx 에서 먼저 닫았다 (7b-0). **코드 폐기는 7b-2** 다 — 닫는 것과 지우는 것을
+> 같은 작업으로 묶지 않았다. 앞은 오늘 할 수 있고 뒤는 테스트 재작성을 기다린다
+> ([`docs/14` §5.4](docs/14_전환설계.md)).
 
 ```
 status = answered   근거를 찾아 판정했다   → 배지 + 근거 + 감사정보(규칙/LLM/차단여부)
