@@ -1,4 +1,4 @@
-.PHONY: help doctor install initdb serve test todo lint fmt verify facts golden eval baseline submit rules vocab index train up db down docker clean
+.PHONY: help doctor install initdb serve test todo lint fmt verify facts golden eval baseline submit submit-check rules vocab index train up db down docker clean
 
 help:            ## 이 목록
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -53,10 +53,20 @@ reqs:            ## 요구사항 정의서 정합성 (1단계) — 추적표 참
 docs-check:      ## 산출물 문서가 주장하는 값이 실물과 같은가 (--tests 로 테스트 수까지)
 	python scripts/check_requirements.py
 	python scripts/check_docs.py
+	python scripts/check_submission.py
 
 reqs-xlsx:       ## 요구사항정의서 → 제출용 xlsx 재생성 (생성물이다. 손으로 고치지 않는다)
 	python scripts/check_requirements.py
 	python scripts/build_requirements_xlsx.py --write
+
+submit-pdf:      ## 필수 산출물 → 제출용 PDF 묶음 (생성물 · Linux 전용)
+	python scripts/build_submission_pdf.py --write
+
+# 🔴 `제출_4차/` 는 **커밋한다** (D-111) — 저장소로 제출하기 때문이다.
+#    그래서 낡을 수 있고, 낡으면 아무도 모른다 (PDF 는 diff 가 안 된다).
+#    이 검사가 `docs/` 해시와 대조한다. `make docs-check` 와 CI 가 부른다.
+submit-check:    ## 커밋된 제출 PDF 가 지금 docs/ 와 같은가 (Windows 에서도 돈다)
+	python scripts/check_submission.py
 
 testplan-xlsx:   ## 테스트계획 → 제출용 xlsx 재생성 (생성물이다. 손으로 고치지 않는다)
 	python scripts/build_testplan_xlsx.py --write

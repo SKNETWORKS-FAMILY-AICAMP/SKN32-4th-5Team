@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import shutil
 import subprocess
@@ -116,7 +117,7 @@ COVER = """# 제출 안내 — 필수 산출물 대조표
 
 | 무엇 | 어디 |
 |---|---|
-| **RAG · 벡터DB · LangChain 연동** | `src/pettriage/graph/` (LangGraph 노드 18개) · `src/pettriage/rag/` |
+| **RAG · 벡터DB · LangChain 연동** | `src/pettriage/rag/` · `src/pettriage/graph/` (노드 18개) |
 | **판정 엔진 · 안전 장치** | `src/pettriage/triage/` · `src/pettriage/compute/` |
 | **추론 서비스 (FastAPI)** | `src/pettriage/app/` — `/api/ask` · `/api/health` |
 | **웹 애플리케이션 (Django)** | `webapp/` · `accounts/` · `pets/` · `diary/` · `chat/` |
@@ -179,8 +180,7 @@ def render_mermaid(md: str, tmp: Path, stem: str) -> tuple[str, int]:
 
     cfg = tmp / "pc.json"
     cfg.write_text(
-        '{"args":["--no-sandbox","--disable-dev-shm-usage"],'
-        f'"executablePath":"{chrome}"}}',
+        f'{{"args":["--no-sandbox","--disable-dev-shm-usage"],"executablePath":"{chrome}"}}',
         encoding="utf-8",
     )
     drawn = 0
@@ -212,6 +212,47 @@ def to_print(md: str) -> tuple[str, list[str]]:
 #: 정상은 900~1,600자다. 표지처럼 짧은 쪽이 몇 장 섞이는 것은 정상이라 **비율**로 본다.
 _THIN_CHARS = 300
 _THIN_RATIO = 0.35
+
+
+#: 원본이 바뀌었는지 대조하는 장부. `scripts/check_submission.py` 가 읽는다.
+MANIFEST = "MANIFEST.md"
+
+
+def source_hash(md: Path) -> str:
+    """원본 `.md` 의 sha256 앞 12자리."""
+    return hashlib.sha256(md.read_bytes()).hexdigest()[:12]
+
+
+def write_manifest(rows: list[tuple[str, str, str, int, int]]) -> None:
+    """🔴 **PDF 가 낡았는지 알 수 있는 유일한 자리.**
+
+    `제출_4차/` 를 커밋하기로 하면서(D-111) 생긴 문제 — PDF 는 diff 가 안 된다.
+    `docs/13` 을 고치고 다시 만들지 않으면 저장소에 **낡은 제출물이 조용히 남고**,
+    `git status` 도 PR 도 아무 말을 하지 않는다.
+
+    그래서 만들 때 원본의 해시를 여기 적어 둔다. **이 파일은 글이라서 diff 가 된다** —
+    PDF 가 다시 만들어졌다는 사실이 PR 에 보인다.
+    """
+    lines = [
+        "# 제출 묶음 장부 — **손으로 고치지 않는다**",
+        "",
+        "`scripts/build_submission_pdf.py --write` 가 쓰고 "
+        "`scripts/check_submission.py` 가 읽는다.",
+        "",
+        "아래 해시는 **만들 때의 원본**이다. 지금 `docs/` 와 다르면 "
+        "이 묶음은 낡은 것이고, 검사가 빨강으로 알린다.",
+        "",
+        "| PDF | 원본 | 원본 해시 | 쪽 | 자/쪽 |",
+        "|---|---|---|---|---|",
+    ]
+    lines += [f"| `{p}` | `{s}` | `{h}` | {pg} | {d} |" for p, s, h, pg, d in rows]
+    lines += [
+        "",
+        "표지(`00_제출안내.pdf`)는 원본이 스크립트 안에 있어 해시가 `-` 다 — "
+        "스크립트가 바뀌면 `git` 이 알려 준다.",
+        "",
+    ]
+    (OUT / MANIFEST).write_text("\n".join(lines), encoding="utf-8")
 
 
 #: 한 번 잰 것을 두 번 재지 않는다 — `pdftotext` 를 쪽마다 부른다.
@@ -288,7 +329,10 @@ def build_one(src: Path, title: str, tmp: Path, write: bool) -> tuple[Path | Non
     out.parent.mkdir(parents=True, exist_ok=True)
     r = _run(
         [
-            "pandoc", str(md_path), "-o", str(out),
+            "pandoc",
+            str(md_path),
+            "-o",
+            str(out),
             # 🔴 **`---` 를 다르게 읽는 문법 셋을 끈다.**
             #
             #    우리 문서는 절 사이를 `---` 가로줄로 나눈다. pandoc 은 그 `---` 를
@@ -307,23 +351,39 @@ def build_one(src: Path, title: str, tmp: Path, write: bool) -> tuple[Path | Non
             #    **우리는 파이프 표만 쓴다.** 나머지 표 문법은 켜 둘 이유가 없고,
             #    켜 두면 가로줄마다 오탐이 난다. 읽는 사람을 위한 `---` 를 도구 사정으로
             #    지우는 대신 리더를 좁힌다.
-            "-f", "markdown-yaml_metadata_block-multiline_tables-simple_tables",
-            "--pdf-engine=xelatex", "--toc", "--toc-depth=2", "--number-sections",
-            "-V", "mainfont=Noto Sans CJK KR",
-            "-V", "monofont=Noto Sans Mono CJK KR",
+            "-f",
+            "markdown-yaml_metadata_block-multiline_tables-simple_tables",
+            "--pdf-engine=xelatex",
+            "--toc",
+            "--toc-depth=2",
+            "--number-sections",
+            "-V",
+            "mainfont=Noto Sans CJK KR",
+            "-V",
+            "monofont=Noto Sans Mono CJK KR",
             # 표가 넓다 — `10 §5` 는 7칸이다. 여백을 줄이고 글자를 낮춰 칸을 넓힌다.
-            "-V", "geometry:margin=1.7cm",
-            "-V", "fontsize=10pt",
-            "-V", "linkcolor=blue", "-V", "urlcolor=blue",
-            "-V", "documentclass=report",
-            "-M", f"title={title}",
+            "-V",
+            "geometry:margin=1.7cm",
+            "-V",
+            "fontsize=10pt",
+            "-V",
+            "linkcolor=blue",
+            "-V",
+            "urlcolor=blue",
+            "-V",
+            "documentclass=report",
+            "-M",
+            f"title={title}",
             # 🔴 **작성자 한 줄에 세 가지를 같이 적는다** — 통합한 사람 · 기여의 출처 · 검토자.
             #    `docs/10`~`docs/14` 머리말이 이미 이렇게 쓰고 있고, 표지만 다르게 쓰면
             #    "팀장이 혼자 썼다" 로 읽힌다. 실제로는 §11(요구사항)·§9.1(화면)·§4.4.1 이
             #    팀원 자료에서 왔다. **누가 무엇을 냈는지는 각 문서 「기여 이력」이 안다.**
-            "-M", f"author={AUTHOR}",
-            "-M", f"date={IMPRINT}",
-            "-M", "lang=ko",
+            "-M",
+            f"author={AUTHOR}",
+            "-M",
+            f"date={IMPRINT}",
+            "-M",
+            "lang=ko",
         ]
     )
     if r.returncode != 0 or not out.exists():
@@ -343,9 +403,24 @@ def main() -> int:
 
     print("━━ 필수 산출물 → PDF ━━")
     if args.write and OUT.exists():
-        shutil.rmtree(OUT)
+        # 🔴 **폴더를 통째로 지우지 않는다.** 예전에는 `rmtree(OUT)` 였는데,
+        #    `제출_4차/` 에는 이 스크립트가 안 만드는 제출물도 들어온다 —
+        #    `PetTriage_발표자료_최종.pptx` 가 실제로 거기 있었다 (2026-08-27).
+        #    `make submit-pdf` 한 번이 **발표자료를 지울 뻔했다.**
+        #
+        #    생성기는 **자기가 만든 것만 치운다.** 남의 물건이 있는 자리를
+        #    쓸어버리는 권한을 스스로에게 주지 않는다.
+        mine = [OUT / f"{Path(f).stem}.pdf" for f, _, _ in ITEMS]
+        mine += [OUT / "00_제출안내.pdf", OUT / MANIFEST]
+        for f in mine:
+            f.unlink(missing_ok=True)
+        kept = [f.name for f in sorted(OUT.iterdir()) if f.is_file()]
+        if kept:
+            print(f"  (그대로 둔 것: {' · '.join(kept)})")
 
-    made, total_drawn, warned = [], 0, []
+    #: `(만들어진 PDF, 원본 파일 이름, 원본 해시)` — 장부에 그대로 들어간다.
+    made: list[tuple[Path, str, str]] = []
+    total_drawn, warned = 0, []
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
 
@@ -355,10 +430,12 @@ def main() -> int:
         out, _, left = build_one(cover_src, "제출 안내 — 필수 산출물 대조표", tmp, args.write)
         if left:
             warned.append(f"표지: {' '.join(left)}")
-        print(f"  {'✓' if (out or not args.write) else '✗'} {'제출 안내 (표지·대조표)':24}"
-              f"      {f'{out.stat().st_size // 1024}KB' if out else '미리 보기'}")
+        print(
+            f"  {'✓' if (out or not args.write) else '✗'} {'제출 안내 (표지·대조표)':24}"
+            f"      {f'{out.stat().st_size // 1024}KB' if out else '미리 보기'}"
+        )
         if out:
-            made.append(out)
+            made.append((out, "(스크립트 안)", "-"))
 
         for fname, title, _req in ITEMS:
             src = DOCS / fname
@@ -373,7 +450,7 @@ def main() -> int:
             size = f"{out.stat().st_size // 1024}KB" if out else "미리 보기"
             print(f"  {mark} {title:24} 그림 {drawn}  {size}")
             if out:
-                made.append(out)
+                made.append((out, fname, source_hash(src)))
 
     if warned:
         print("\n  ※ 대응표에 없는 이모지를 지웠다 — SYMBOLS 에 넣는다:")
@@ -389,19 +466,24 @@ def main() -> int:
     #    2026-08-27 에 `docs/14` 가 77쪽으로 나왔고 pandoc 은 아무 말도 하지 않았다.
     #    사람이 쪽수를 세어야 잡히는 결함은 다음에도 조용히 지나간다.
     broken: list[str] = []
+    rows: list[tuple[str, str, str, int, int]] = []
     print("\n  ━ 판 검사 (쪽당 글자 수)")
-    for pdf in made:
+    for pdf, src_name, h in made:
         msgs = check_layout(pdf)
         pages, density = _page_density(pdf)
         print(f"     {pdf.name:24} {pages:>3}쪽  {density:>5}자/쪽  {'✗' if msgs else '✓'}")
         broken += msgs
+        rows.append((pdf.name, src_name, h, pages, density))
     if broken:
         print("\n  🔴 판이 무너졌다 — 이 묶음은 제출하지 않는다:")
         for b in broken:
             print(f"     {b}")
         return 1
 
-    print(f"\n  ✓ {OUT.name}/ 에 {len(made)}개")
+    # 🔴 **판 검사를 통과한 것만 장부에 올린다.** 무너진 묶음의 해시를 적어 두면
+    #    `check_submission.py` 가 *"최신"* 이라고 말하게 된다 — 낡은 것보다 나쁘다.
+    write_manifest(rows)
+    print(f"\n  ✓ {OUT.name}/ 에 PDF {len(made)}개 + {MANIFEST}")
     return 0 if made else 1
 
 
