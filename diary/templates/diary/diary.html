@@ -290,6 +290,8 @@ const currentPet = {
   gender:  "{{ pet.gender|default:''|escapejs }}",
   weight:  "{{ pet.weight_kg|default:''|escapejs }}",
   notes:   "{{ pet.notes|default:''|escapejs }}",
+  // 서버가 판단해서 내려 준다 (diary/views.py · compute/lifestage.py)
+  isJuvenile: {{ is_juvenile|yesno:"true,false" }},
 };
 currentPet.emoji = speciesEmojiMap[currentPet.species] || '🐾';
 currentPet.sizeLabel = currentPet.breed || buildSizeLabel(currentPet.species, currentPet.size);
@@ -381,12 +383,10 @@ const idealWeightRanges = {
   cat:  { small:[2.5, 4], medium:[4, 5.5], large:[5.5, 7] },
 };
 
-function isJuvenile(ageStr){
-  if(!ageStr) return false;
-  if(ageStr.includes('개월')) return true;
-  const num = parseFloat(ageStr);
-  return !isNaN(num) && num < 1;
-}
+// 🔴 성장기 판단은 **서버가 한다** — 여기서 다시 계산하지 않는다.
+//    예전에는 이 자리에 parseFloat 로 같은 판단을 하는 함수가 있었는데,
+//    서버의 float() 과 답이 달라 "0.5살" 이면 배지는 성장기인데 알림은 급변으로 떴다.
+//    규칙은 src/pettriage/compute/lifestage.py 한 곳에 있다 (D-22).
 
 function renderWeightStatus(weight){
   const box = document.getElementById('weightStatus');
@@ -397,7 +397,7 @@ function renderWeightStatus(weight){
     return;
   }
 
-  if(isJuvenile(currentPet.age)){
+  if(currentPet.isJuvenile){
     box.innerHTML = `
       <span class="ws-badge ok">🌱 성장기</span>
       <div class="ws-desc">아직 성장기라 체중이 표준 범위 밖이어도 정상일 수 있어요. 정확한 평가는 수의사와 상담해주세요.</div>`;
