@@ -43,6 +43,13 @@
     padding:7px 14px; font-size:12px; font-weight:700; text-decoration:none;
   }
   .topbar-right a:hover{ background: rgba(255,255,255,0.2); }
+  /* 로그아웃이 링크에서 폼 버튼이 됐다 (FR-30). 생김새는 그대로 둔다. */
+  .topbar-right button{
+    color:#fff; background: rgba(255,255,255,0.12); border:0; border-radius:999px;
+    padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  .topbar-right button:hover{ background: rgba(255,255,255,0.2); }
 
   .wrap{ max-width: 880px; margin:0 auto; padding: 40px 30px 60px; }
 
@@ -102,7 +109,11 @@
   </div>
   <div class="topbar-right">
     <span>{{ user.username }}님</span>
-    <a href="{% url 'accounts:logout' %}">로그아웃</a>
+    {# 🔒 링크가 아니라 폼이다 — GET 로그아웃은 남이 시킬 수 있다 (FR-30). #}
+    <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
+      {% csrf_token %}
+      <button type="submit">로그아웃</button>
+    </form>
   </div>
 </div>
 

@@ -21,6 +21,11 @@ services:
       - "80:80"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 🔴 Django 정적·미디어를 nginx 가 직접 낸다 (NFR-17).
+      #    `DEBUG=false` 면 Django 가 안 내주므로 관리자 화면이 CSS 없이 뜬다.
+      #    비어 있어도 된다 — nginx.conf 의 `try_files` 가 Django 로 되돌린다.
+      - ./staticfiles:/srv/staticfiles:ro
+      - ./media:/srv/media:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
   api:

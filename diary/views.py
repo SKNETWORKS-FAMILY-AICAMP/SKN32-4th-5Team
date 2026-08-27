@@ -28,6 +28,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from pets.models import Pet
+from pettriage.compute.lifestage import is_juvenile
 
 from .models import DiaryEntry
 from .serializers import RecordCreateSerializer
@@ -72,6 +73,10 @@ class DiaryPageView(LoginRequiredMixin, TemplateView):
         if pet is None:
             pet = self.request.user.pets.first()
         ctx["pet"] = pet
+        # 🔴 성장기 판단은 **서버가 한다.** 화면이 따로 계산하면 두 벌이 되고,
+        #    2026-08-27 까지 실제로 두 벌이 서로 다른 답을 내고 있었다
+        #    (`compute/lifestage.py` 머리말). 화면은 이 값을 받아 쓰기만 한다.
+        ctx["is_juvenile"] = is_juvenile(pet.age if pet else "")
         return ctx
 
 
@@ -165,26 +170,6 @@ def _summarize_via_inference(
         return "요약 서비스에 연결할 수 없습니다. 기록 원본은 아래에서 확인해 주세요.", "code"
 
 
-def _is_juvenile(age: str) -> bool:
-    """`diary.html`의 `isJuvenile()`과 같은 판단 — "개월" 표기거나 나이 숫자가 1 미만.
-
-    성장기 판단 자체는 이 프로젝트에 이미 있었다(절대 체중 범위 체크용). 체중
-    급변 감지에도 같은 기준을 그대로 쓴다 — 실제로 찾아보니 신생아 강아지·
-    새끼 고양이·부화 직후 앵무새 새끼는 **하루에 5~10%씩 체중이 느는 게 정상**이다
-    (2026-08-26 확인, pawsinwork.com·hari.ca 등). 이 알림의 임계값(5~10%)이
-    성장기엔 아예 의미가 없어진다는 뜻이라, 새 숫자를 만드는 대신 이 기간엔
-    알림 자체를 끈다.
-    """
-    if not age:
-        return False
-    if "개월" in age:
-        return True
-    try:
-        return float(age) < 1
-    except ValueError:
-        return False
-
-
 def _detect_weight_change(rows: list[dict], age: str = "") -> dict | None:
     """가장 최근 두 체중 기록을 비교해 급변 여부를 2단계(주의·병원)로 판정한다.
 
@@ -195,7 +180,7 @@ def _detect_weight_change(rows: list[dict], age: str = "") -> dict | None:
     기록이 2건 미만이면(비교 불가) `None`을 돌려준다 — 폴백을 숨기지 않는
     `report.py` 태도와 같다.
     """
-    if _is_juvenile(age):
+    if is_juvenile(age):
         return None
 
     weighed = [r for r in rows if r["weight_kg"] is not None]
@@ -282,7 +267,29 @@ class ReportView(APIView):
         entries = qs.order_by("recorded_at")
 
         rows = [_row_to_dict(e) for e in entries]
-        summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
+
+        # 🔴 **요약은 달라고 할 때만 만든다** (`?summary=1`).
+        #
+        #    이 엔드포인트를 부르는 곳은 둘인데 쓰는 것이 다르다 —
+        #      · `loadRecords()`  화면 열 때·저장할 때·날짜 바꿀 때. timeline·streak·weight_alert 만 쓴다
+        #      · 리포트 다운로드   사용자가 버튼을 누를 때. summary 를 쓴다
+        #
+        #    그런데 예전에는 **언제나** 요약을 만들었다. 다이어리 화면을 한 번 여는 것만으로
+        #    LLM 호출이 나가고 **그 결과는 버려졌다.** 2026-08-27 시연 로그에서
+        #    2분 동안 `POST /internal/report/summarize` 가 9번 나갔는데 다운로드는 0번이었다.
+        #
+        #    비용만 문제가 아니다 — 이 호출은 `timeout=30.0` 동기라 **화면이 그만큼 기다렸고**,
+        #    스트릭·체중 그래프는 LLM 과 아무 상관이 없다. 그리고 D-99(추론은 배달을 모른다)를
+        #    거꾸로 세운다 — **배달 쪽 화면 로드가 추론을 깨우고 있었다.**
+        #
+        #    ⚠️ 기간이 비었는지로 가르지 않는다. `loadRecords` 가 마침 빈 기간을 보내지만
+        #       그건 **우연**이고, 다음 사람이 전 기간 다운로드를 만들면 조용히 깨진다.
+        want_summary = request.query_params.get("summary") == "1"
+        if want_summary:
+            summary, summary_by = _summarize_via_inference(rows, period_from, period_to)
+        else:
+            # 빈 문자열이 아니라 이유를 남긴다 — 화면이 "요약이 실패했나" 로 읽지 않게 (D-58).
+            summary, summary_by = "", "skipped"
         weight_alert = _detect_weight_change(rows, pet.age)
 
         all_dates = set(

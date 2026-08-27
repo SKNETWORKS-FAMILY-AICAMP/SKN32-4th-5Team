@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 
 def login_view(request):
@@ -46,7 +47,23 @@ def signup_view(request):
     return render(request, "accounts/signup.html", {"error": error})
 
 
+@require_POST
 def logout_view(request):
+    """로그아웃. **POST 로만 받는다** (FR-30).
+
+    🔒 GET 으로 열리면 **남이 남을 로그아웃시킬 수 있다.** 공격자가 게시판이나 메일에
+    `<img src="https://…/accounts/logout/">` 한 줄만 심으면, 그 글을 연 사람은 조용히
+    로그아웃된다. 브라우저가 이미지를 가지러 가면서 세션 쿠키를 같이 보내기 때문이다.
+
+    피해가 크지는 않다 — 지워지는 것은 세션뿐이다. 다만 **작업 중이던 것이 날아가고**,
+    반복되면 서비스를 못 쓴다. Django 도 4.1 부터 자기 `LogoutView` 를 POST 전용으로 바꿨다.
+
+    POST 로 오면 CSRF 토큰이 필요하고, 토큰은 우리 화면에서만 나온다.
+
+    `@login_required` 는 **일부러 안 붙였다.** 붙이면 이미 나간 사람이 한 번 더 눌렀을 때
+    `?next=/accounts/logout/` 를 달고 로그인 화면으로 갔다가, 로그인 뒤 그 주소를 GET 으로
+    다시 열어 405 가 난다. 익명 요청에 `logout()` 은 그냥 아무 일도 안 하므로 그대로 둔다.
+    """
     logout(request)
     return redirect("accounts:login")
 
